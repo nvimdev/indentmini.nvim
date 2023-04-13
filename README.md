@@ -10,7 +10,7 @@ require('lazy').setup({
     'nvimdev/indentmini.nvim',
     event = 'BufEnter',
     config = function()
-        require('indentmini').setup({})
+        require('indentmini').setup()
     end,
     -- this is no required but if you want indent blanklink line this is needed
     dependencies = { 'nvim-treesitter/nvim-treesitter'}
@@ -24,8 +24,18 @@ require('lazy').setup({
 
 highlight group is `IndentLine`. you can use this to link it to `Comment`
 
-```
-vim.cmd('hi defaule link IndentLine Comment')
+```lua
+config = function()
+    require("indentmini").setup({
+        char = "|",
+        exclude = {
+            "erlang",
+            "markdown",
+        }
+    })
+    -- use comment color
+    vim.cmd.highlight("default link IndentLine Comment")
+end,
 ```
 
 ## License MIT
