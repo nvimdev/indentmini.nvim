@@ -3,9 +3,17 @@ local treesitter = vim.treesitter
 local nvim_create_autocmd = api.nvim_create_autocmd
 local mini = {}
 
-local function has_treesitter()
+local function has_treesitter(bufnr)
   local ok = pcall(require, 'nvim-treesitter')
-  return ok
+  if not ok then
+    return ok
+  end
+  local lang = pcall(treesitter.language.get_lang, vim.bo[bufnr].filetype)
+  local has, parser = pcall(treesitter.get_parser, bufnr, lang)
+  if not parser or not has then
+    return false
+  end
+  return true
 end
 
 local function check_inblock()
@@ -17,7 +25,7 @@ local function check_inblock()
     'call_expression',
   }
   return function(bufnr, row)
-    if not has_treesitter() then
+    if not has_treesitter(bufnr) then
       return false
     end
     local node = treesitter.get_node({ bufnr = bufnr, pos = { row, 0 } })
