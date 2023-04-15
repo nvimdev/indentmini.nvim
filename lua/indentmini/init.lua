@@ -61,12 +61,16 @@ local function indentline()
 
     ctx[#ctx + 1] = indent
 
+    local fill = vim.bo.sw / 2
     for i = 1, indent - 1, vim.bo[bufnr].sw do
       local pos = 'overlay'
       local symbol = mini.char
       if #text == 0 and i - 1 > 0 then
         pos = 'eol'
         symbol = (i == 1 + vim.bo[bufnr].sw and (' '):rep(vim.bo[bufnr].sw - 1) or '') .. '│'
+        if i > 1 + vim.bo[bufnr].sw and fill > 1 then
+          symbol = (' '):rep(fill) .. symbol
+        end
       end
 
       api.nvim_buf_set_extmark(bufnr, ns, row, i - 1, {
