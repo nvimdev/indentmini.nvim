@@ -44,7 +44,7 @@ local ns = api.nvim_create_namespace('IndentLine')
 
 local function col_in_screen(col)
   local leftcol = vim.fn.winsaveview().leftcol
-  return col > leftcol
+  return col >= leftcol
 end
 
 local function indentline()
