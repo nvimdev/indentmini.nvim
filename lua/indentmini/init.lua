@@ -42,6 +42,11 @@ end
 
 local ns = api.nvim_create_namespace('IndentLine')
 
+local function col_in_screen(col)
+  local leftcol = vim.fn.winsaveview().leftcol
+  return col > leftcol
+end
+
 local function indentline()
   local function on_win(_, _, bufnr, _)
     if bufnr ~= vim.api.nvim_get_current_buf() then
@@ -62,10 +67,11 @@ local function indentline()
     ctx[#ctx + 1] = indent
 
     local fill = vim.bo.sw / 2
+
     for i = 1, indent - 1, vim.bo[bufnr].sw do
       local pos = 'overlay'
       local symbol = mini.char
-      if #text == 0 and i - 1 > 0 then
+      if #text == 0 and i - 1 > 0 and col_in_screen(i - 1) then
         pos = 'eol'
         symbol = (i == 1 + vim.bo[bufnr].sw and (' '):rep(vim.bo[bufnr].sw - 1) or '') .. '│'
         if i > 1 + vim.bo[bufnr].sw and fill > 1 then
@@ -73,11 +79,13 @@ local function indentline()
         end
       end
 
-      api.nvim_buf_set_extmark(bufnr, ns, row, i - 1, {
-        virt_text = { { symbol, 'IndentLine' } },
-        virt_text_pos = pos,
-        ephemeral = true,
-      })
+      if col_in_screen(i - 1) then
+        api.nvim_buf_set_extmark(bufnr, ns, row, i - 1, {
+          virt_text = { { symbol, 'IndentLine' } },
+          virt_text_pos = pos,
+          ephemeral = true,
+        })
+      end
     end
 
     if row + 1 == vim.fn.line('w$') then
