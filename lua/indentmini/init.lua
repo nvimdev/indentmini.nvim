@@ -40,9 +40,9 @@ local function check_inblock()
   end
 end
 
-local function indentline()
-  local ns = api.nvim_create_namespace('IndentLine')
+local ns = api.nvim_create_namespace('IndentLine')
 
+local function indentline()
   local function on_win(_, _, bufnr, _)
     if bufnr ~= vim.api.nvim_get_current_buf() then
       return false
