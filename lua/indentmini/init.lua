@@ -1,6 +1,6 @@
 local api = vim.api
 local treesitter = vim.treesitter
-local nvim_create_autocmd = api.nvim_create_autocmd
+local nvim_create_autocmd, nvim_buf_set_extmark = api.nvim_create_autocmd, api.nvim_buf_set_extmark
 local mini = {}
 
 local function has_treesitter(bufnr)
@@ -66,23 +66,18 @@ local function indentline()
 
     ctx[#ctx + 1] = indent
 
-    local fill = vim.bo.sw / 2
-
     for i = 1, indent - 1, vim.bo[bufnr].sw do
-      local pos = 'overlay'
-      local symbol = mini.char
       if #text == 0 and i - 1 > 0 and col_in_screen(i - 1) then
-        pos = 'eol'
-        symbol = (i == 1 + vim.bo[bufnr].sw and (' '):rep(vim.bo[bufnr].sw - 1) or '') .. '│'
-        if i > 1 + vim.bo[bufnr].sw and fill > 1 then
-          symbol = (' '):rep(fill) .. symbol
-        end
-      end
-
-      if col_in_screen(i - 1) then
-        api.nvim_buf_set_extmark(bufnr, ns, row, i - 1, {
-          virt_text = { { symbol, 'IndentLine' } },
-          virt_text_pos = pos,
+        nvim_buf_set_extmark(bufnr, ns, row, 0, {
+          virt_text = { { mini.char, 'IndentLine' } },
+          virt_text_pos = 'overlay',
+          virt_text_win_col = i - 1,
+          ephemeral = true,
+        })
+      elseif col_in_screen(i - 1) then
+        nvim_buf_set_extmark(bufnr, ns, row, i - 1, {
+          virt_text = { { mini.char, 'IndentLine' } },
+          virt_text_pos = 'overlay',
           ephemeral = true,
         })
       end
