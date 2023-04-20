@@ -8,9 +8,14 @@ local function has_treesitter(bufnr)
   if not ok then
     return ok
   end
-  local lang = pcall(treesitter.language.get_lang, vim.bo[bufnr].filetype)
+
+  local has_lang, lang = pcall(treesitter.language.get_lang, vim.bo[bufnr].filetype)
+  if not has_lang then
+    return
+  end
+
   local has, parser = pcall(treesitter.get_parser, bufnr, lang)
-  if not parser or not has then
+  if not has or not parser then
     return false
   end
   return true
