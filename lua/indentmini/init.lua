@@ -51,8 +51,9 @@ local function indentline()
 
   local function on_start(_, _)
     local bufnr = api.nvim_get_current_buf()
+    local exclude_buftype = { 'nofile', 'terminal' }
     if
-      vim.bo[bufnr].buftype == 'nofile'
+      vim.tbl_contains(exclude_buftype, vim.bo[bufnr].buftype)
       or not vim.bo[bufnr].expandtab
       or vim.tbl_contains(mini.exclude, vim.bo[bufnr].ft)
     then
