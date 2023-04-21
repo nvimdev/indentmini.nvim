@@ -12,8 +12,6 @@ require('lazy').setup({
     config = function()
         require('indentmini').setup()
     end,
-    -- this is no required but if you want indent blanklink line this is needed
-    dependencies = { 'nvim-treesitter/nvim-treesitter'}
 })
 ```
 

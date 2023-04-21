@@ -1,49 +1,6 @@
 local api = vim.api
-local treesitter = vim.treesitter
 local nvim_create_autocmd, nvim_buf_set_extmark = api.nvim_create_autocmd, api.nvim_buf_set_extmark
 local mini = {}
-
-local function has_treesitter(bufnr)
-  local ok = pcall(require, 'nvim-treesitter')
-  if not ok then
-    return ok
-  end
-
-  local has_lang, lang = pcall(treesitter.language.get_lang, vim.bo[bufnr].filetype)
-  if not has_lang then
-    return
-  end
-
-  local has, parser = pcall(treesitter.get_parser, bufnr, lang)
-  if not has or not parser then
-    return false
-  end
-  return true
-end
-
-local function check_inblock()
-  local type = {
-    'function_definition',
-    'for_statement',
-    'if_statement',
-    'while_statement',
-    'call_expression',
-  }
-  return function(bufnr, row)
-    if not has_treesitter(bufnr) then
-      return false
-    end
-    local node = treesitter.get_node({ bufnr = bufnr, pos = { row, 0 } })
-    if not node then
-      return false
-    end
-    local parent = node:parent()
-    if parent and vim.tbl_contains(type, parent:type()) then
-      return true
-    end
-    return false
-  end
-end
 
 local ns = api.nvim_create_namespace('IndentLine')
 
@@ -63,9 +20,8 @@ local function indentline()
   local function on_line(_, _, bufnr, row)
     local indent = vim.fn.indent(row + 1)
     local text = api.nvim_buf_get_text(bufnr, row, 0, row, -1, {})[1]
-    local inblock = check_inblock()
     local prev = ctx[#ctx] or 0
-    if indent == 0 and #text == 0 and (prev > 0 or inblock(bufnr, row)) then
+    if indent == 0 and #text == 0 and prev > 0 then
       indent = prev > 20 and 4 or prev
     end
 
