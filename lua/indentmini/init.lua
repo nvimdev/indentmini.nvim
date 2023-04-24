@@ -28,19 +28,25 @@ local function indentline()
     ctx[#ctx + 1] = indent
 
     for i = 1, indent - 1, vim.bo[bufnr].sw do
-      if #text == 0 and i - 1 > 0 and col_in_screen(i - 1) then
-        nvim_buf_set_extmark(bufnr, ns, row, 0, {
-          virt_text = { { mini.char, 'IndentLine' } },
-          virt_text_pos = 'overlay',
-          virt_text_win_col = i - 1,
-          ephemeral = true,
-        })
-      elseif col_in_screen(i - 1) then
-        nvim_buf_set_extmark(bufnr, ns, row, i - 1, {
-          virt_text = { { mini.char, 'IndentLine' } },
-          virt_text_pos = 'overlay',
-          ephemeral = true,
-        })
+      if col_in_screen(i - 1) then
+        local param, col = {}, 0
+        if #text == 0 and i - 1 > 0 then
+          param = {
+            virt_text = { { mini.char, 'IndentLine' } },
+            virt_text_pos = 'overlay',
+            virt_text_win_col = i - 1,
+            ephemeral = true,
+          }
+        else
+          param = {
+            virt_text = { { mini.char, 'IndentLine' } },
+            virt_text_pos = 'overlay',
+            ephemeral = true,
+          }
+          col = i - 1
+        end
+
+        nvim_buf_set_extmark(bufnr, ns, row, col, param)
       end
     end
 
