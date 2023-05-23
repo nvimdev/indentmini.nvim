@@ -80,7 +80,7 @@ end
 
 local function setup(opt)
   mini = vim.tbl_extend('force', {
-    char = '│',
+    char = '┇',
     exclude = default_exclude(),
   }, opt or {})
 
