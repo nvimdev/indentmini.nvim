@@ -65,7 +65,7 @@ describe('indent mini', function()
     }
     local char = '┇'
     local screenstr = screen(lines)
-    for _,line in ipairs(screenstr) do
+    for _, line in ipairs(screenstr) do
       print(vim.inspect(line))
     end
 
