@@ -20,12 +20,12 @@ local function indentline()
   local function on_line(_, _, bufnr, row)
     local indent = vim.fn.indent(row + 1)
     local text = api.nvim_buf_get_text(bufnr, row, 0, row, -1, {})[1]
-    local prev = ctx[#ctx] or 0
+    local prev = ctx[tostring(row - 1)] or 0
     if indent == 0 and #text == 0 and prev > 0 then
       indent = prev > 20 and 4 or prev
     end
 
-    ctx[#ctx + 1] = indent
+    ctx[tostring(row)] = indent
 
     for i = 1, indent - 1, vim.bo[bufnr].sw do
       if col_in_screen(i - 1) then
@@ -49,10 +49,10 @@ local function indentline()
         nvim_buf_set_extmark(bufnr, ns, row, col, param)
       end
     end
+  end
 
-    if row + 1 == vim.fn.line('w$') then
-      ctx = {}
-    end
+  local function on_end()
+    ctx = {}
   end
 
   local function on_start(_, _)
@@ -71,6 +71,7 @@ local function indentline()
     on_win = on_win,
     on_start = on_start,
     on_line = on_line,
+    on_end = on_end,
   })
 end
 
