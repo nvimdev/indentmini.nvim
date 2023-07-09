@@ -9,7 +9,12 @@ local function col_in_screen(col)
   return col >= leftcol
 end
 
-local function indentline()
+local function hl_group(inlevel)
+  local name = 'IndentLine'
+  return not mini.hl_current and name or name .. inlevel
+end
+
+local function indentline(hl_current)
   local function on_win(_, _, bufnr, _)
     if bufnr ~= vim.api.nvim_get_current_buf() then
       return false
@@ -20,26 +25,28 @@ local function indentline()
   local function on_line(_, _, bufnr, row)
     local indent = vim.fn.indent(row + 1)
     local text = api.nvim_buf_get_text(bufnr, row, 0, row, -1, {})[1]
-    local prev = ctx[tostring(row - 1)] or 0
+    local prev = ctx[row - 1] or 0
     if indent == 0 and #text == 0 and prev > 0 then
       indent = prev > 20 and 4 or prev
     end
 
-    ctx[tostring(row)] = indent
+    local hi_name = hl_group(indent)
+
+    ctx[row] = indent
 
     for i = 1, indent - 1, vim.bo[bufnr].sw do
       if col_in_screen(i - 1) then
         local param, col = {}, 0
         if #text == 0 and i - 1 > 0 then
           param = {
-            virt_text = { { mini.char, 'IndentLine' } },
+            virt_text = { { mini.char, hi_name } },
             virt_text_pos = 'overlay',
             virt_text_win_col = i - 1,
             ephemeral = true,
           }
         else
           param = {
-            virt_text = { { mini.char, 'IndentLine' } },
+            virt_text = { { mini.char, hi_name } },
             virt_text_pos = 'overlay',
             ephemeral = true,
           }
@@ -85,8 +92,9 @@ local function setup(opt)
     exclude = default_exclude(),
   }, opt or {})
 
+  local group = api.nvim_create_augroup('IndentMini', { clear = true })
   nvim_create_autocmd('BufEnter', {
-    group = api.nvim_create_augroup('IndentMini', { clear = true }),
+    group = group,
     callback = function()
       indentline()
     end,
