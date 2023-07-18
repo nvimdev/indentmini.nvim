@@ -34,7 +34,7 @@ local function indentline(hl_current)
 
     ctx[row] = indent
 
-    for i = 1, indent - 1, vim.bo[bufnr].sw do
+    for i = 1, indent - 1, vim.fn.shiftwidth() do
       if col_in_screen(i - 1) then
         local param, col = {}, 0
         if #text == 0 and i - 1 > 0 then
