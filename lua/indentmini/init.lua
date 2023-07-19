@@ -33,12 +33,19 @@ local function indentline(hl_current)
     local hi_name = hl_group(indent)
 
     ctx[row] = indent
-     
-    local function indent_step()                                                                                                           
+
+    local function indent_step()
       if vim.fn.exists('*shiftwidth') ~= 0 then
         return vim.fn.shiftwidth()
       elseif vim.fn.exists('+shiftwidth') ~= 0 then
-        return vim.opt_local.shiftwidth
+        -- sample impl of shiftwidth builtin
+        if vim.opt_local.shiftwidth:get() ~= 0 then
+          return vim.opt_local.shiftwidth:get()
+        elseif vim.opt_local.tabstop:get() ~= 0 then
+          return vim.opt_local.tabstop:get()
+        else
+          return 8
+        end
       end
     end
 
