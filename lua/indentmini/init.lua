@@ -33,8 +33,18 @@ local function indentline(hl_current)
     local hi_name = hl_group(indent)
 
     ctx[row] = indent
+     
+    local function indent_step()                                                                                                           
+      if vim.fn.exists('*shiftwidth') ~= 0 then
+        return vim.fn.shiftwidth()
+      elseif vim.fn.exists('+shiftwidth') ~= 0 then
+        return vim.opt_local.shiftwidth
+      end
+    end
 
-    for i = 1, indent - 1, vim.fn.shiftwidth() do
+    local shift_step = indent_step()
+
+    for i = 1, indent - 1, shift_step do
       if col_in_screen(i - 1) then
         local param, col = {}, 0
         if #text == 0 and i - 1 > 0 then
