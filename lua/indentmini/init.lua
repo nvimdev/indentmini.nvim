@@ -35,10 +35,10 @@ local function indentline(hl_current)
     ctx[row] = indent
 
     local function indent_step()
-      if vim.fn.exists('*shiftwidth') ~= 0 then
+      if vim.fn.exists('*shiftwidth') == 1 then
         return vim.fn.shiftwidth()
-      elseif vim.fn.exists('+shiftwidth') ~= 0 then
-        -- sample impl of shiftwidth builtin
+      elseif vim.fn.exists('&shiftwidth') == 1 then
+        -- impl of shiftwidth builtin
         if vim.opt_local.shiftwidth:get() ~= 0 then
           return vim.opt_local.shiftwidth:get()
         elseif vim.opt_local.tabstop:get() ~= 0 then
