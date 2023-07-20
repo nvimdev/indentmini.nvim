@@ -38,13 +38,11 @@ local function indentline(hl_current)
       if vim.fn.exists('*shiftwidth') == 1 then
         return vim.fn.shiftwidth()
       elseif vim.fn.exists('&shiftwidth') == 1 then
-        -- impl of shiftwidth builtin
-        if vim.opt_local.shiftwidth:get() ~= 0 then
-          return vim.opt_local.shiftwidth:get()
-        elseif vim.opt_local.tabstop:get() ~= 0 then
-          return vim.opt_local.tabstop:get()
-        else
-          return 8
+        -- implementation of shiftwidth builtin
+        if vim.bo[bufnr].shiftwidth ~= 0 then
+          return vim.bo[bufnr].shiftwidth
+        elseif vim.bo[bufnr].tabstop ~= 0 then
+          return vim.bo[bufnr].tabstop
         end
       end
     end
