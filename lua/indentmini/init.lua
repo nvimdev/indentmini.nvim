@@ -34,7 +34,22 @@ local function indentline(hl_current)
 
     ctx[row] = indent
 
-    for i = 1, indent - 1, vim.bo[bufnr].sw do
+    local function indent_step()
+      if vim.fn.exists('*shiftwidth') == 1 then
+        return vim.fn.shiftwidth()
+      elseif vim.fn.exists('&shiftwidth') == 1 then
+        -- implementation of shiftwidth builtin
+        if vim.bo[bufnr].shiftwidth ~= 0 then
+          return vim.bo[bufnr].shiftwidth
+        elseif vim.bo[bufnr].tabstop ~= 0 then
+          return vim.bo[bufnr].tabstop
+        end
+      end
+    end
+
+    local shift_step = indent_step()
+
+    for i = 1, indent - 1, shift_step do
       if col_in_screen(i - 1) then
         local param, col = {}, 0
         if #text == 0 and i - 1 > 0 then
