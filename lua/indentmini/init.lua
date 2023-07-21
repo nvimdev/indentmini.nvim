@@ -14,6 +14,19 @@ local function hl_group(inlevel)
   return not mini.hl_current and name or name .. inlevel
 end
 
+local function indent_step(bufnr)
+  if vim.fn.exists('*shiftwidth') == 1 then
+    return vim.fn.shiftwidth()
+  elseif vim.fn.exists('&shiftwidth') == 1 then
+    -- implementation of shiftwidth builtin
+    if vim.bo[bufnr].shiftwidth ~= 0 then
+      return vim.bo[bufnr].shiftwidth
+    elseif vim.bo[bufnr].tabstop ~= 0 then
+      return vim.bo[bufnr].tabstop
+    end
+  end
+end
+
 local function indentline(hl_current)
   local function on_win(_, _, bufnr, _)
     if bufnr ~= vim.api.nvim_get_current_buf() then
@@ -34,22 +47,7 @@ local function indentline(hl_current)
 
     ctx[row] = indent
 
-    local function indent_step()
-      if vim.fn.exists('*shiftwidth') == 1 then
-        return vim.fn.shiftwidth()
-      elseif vim.fn.exists('&shiftwidth') == 1 then
-        -- implementation of shiftwidth builtin
-        if vim.bo[bufnr].shiftwidth ~= 0 then
-          return vim.bo[bufnr].shiftwidth
-        elseif vim.bo[bufnr].tabstop ~= 0 then
-          return vim.bo[bufnr].tabstop
-        end
-      end
-    end
-
-    local shift_step = indent_step()
-
-    for i = 1, indent - 1, shift_step do
+    for i = 1, indent - 1, indent_step(bufnr) do
       if col_in_screen(i - 1) then
         local param, col = {}, 0
         if #text == 0 and i - 1 > 0 then
