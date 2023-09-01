@@ -58,12 +58,14 @@ local function indentline()
             virt_text = { { mini.char, hi_name } },
             virt_text_pos = 'overlay',
             virt_text_win_col = i - 1,
+            hl_mode = 'combine',
             ephemeral = true,
           }
         else
           param = {
             virt_text = { { mini.char, hi_name } },
             virt_text_pos = 'overlay',
+            hl_mode = 'combine',
             ephemeral = true,
           }
           col = i - 1
