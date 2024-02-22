@@ -47,12 +47,12 @@ local function indentline(opts)
     local shiftw = indent_step(bufnr)
     for i = 1, indent - 1, shiftw do
       local hi_name = 'IndentLine'
-      if #opts.hl_colors ~= 0 then
+      if #opts.hi_colors ~= 0 then
         local iteration = math.floor((i - 1) / shiftw) + 1
-        local idx = (iteration - 1) % #opts.hl_colors + 1
+        local idx = (iteration - 1) % #opts.hi_colors + 1
         hi_name = string.format('%s%d', hi_name, iteration)
 
-        vim.cmd.highlight('default link ' .. hi_name .. ' ' .. opts.hl_colors[idx])
+        vim.cmd.highlight('default link ' .. hi_name .. ' ' .. opts.hi_colors[idx])
       end
 
       if col_in_screen(i - 1) then
@@ -118,7 +118,7 @@ local function setup(opt)
   nvim_create_autocmd('BufEnter', {
     group = group,
     callback = function()
-      indentline({ hl_colors = opt.hl_colors })
+      indentline({ hi_colors = opt.hi_colors })
     end,
   })
 end
