@@ -9,18 +9,6 @@ local function col_in_screen(col)
   return col >= leftcol
 end
 
-local function hl_group(num)
-  local hl_groups = {
-    'IndentLine1',
-    'IndentLine2',
-    'IndentLine3',
-    'IndentLine4',
-    'IndentLine5',
-    'IndentLine6',
-  }
-  return hl_groups[num]
-end
-
 local function indent_step(bufnr)
   if vim.fn.exists('*shiftwidth') == 1 then
     return vim.fn.shiftwidth()
@@ -34,7 +22,7 @@ local function indent_step(bufnr)
   end
 end
 
-local function indentline()
+local function indentline(opts)
   local function on_win(_, _, bufnr, _)
     if bufnr ~= vim.api.nvim_get_current_buf() then
       return false
@@ -56,8 +44,17 @@ local function indentline()
 
     ctx[row] = indent
 
-    for i = 1, indent - 1, indent_step(bufnr) do
-      local hi_name = hl_group(math.fmod(i, 7))
+    local shiftw = indent_step(bufnr)
+    for i = 1, indent - 1, shiftw do
+      local hi_name = 'IndentLine'
+      if #opts.hl_colors ~= 0 then
+        local iteration = math.floor((i - 1) / shiftw) + 1
+        local idx = (iteration - 1) % #opts.hl_colors + 1
+        hi_name = string.format('%s%d', hi_name, iteration)
+
+        vim.cmd.highlight('default link ' .. hi_name .. ' ' .. opts.hl_colors[idx])
+      end
+
       if col_in_screen(i - 1) then
         local param, col = {}, 0
         if #text == 0 and i - 1 > 0 then
@@ -121,7 +118,7 @@ local function setup(opt)
   nvim_create_autocmd('BufEnter', {
     group = group,
     callback = function()
-      indentline()
+      indentline({ hl_colors = opt.hl_colors })
     end,
   })
 end
