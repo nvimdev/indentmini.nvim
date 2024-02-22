@@ -9,8 +9,16 @@ local function col_in_screen(col)
   return col >= leftcol
 end
 
-local function hl_group()
-  return 'IndentLine'
+local function hl_group(num)
+  local hl_groups = {
+    'IndentLine1',
+    'IndentLine2',
+    'IndentLine3',
+    'IndentLine4',
+    'IndentLine5',
+    'IndentLine6',
+  }
+  return hl_groups[num]
 end
 
 local function indent_step(bufnr)
@@ -46,11 +54,10 @@ local function indentline()
       indent = prev > 20 and 4 or prev
     end
 
-    local hi_name = hl_group()
-
     ctx[row] = indent
 
     for i = 1, indent - 1, indent_step(bufnr) do
+      local hi_name = hl_group(math.fmod(i, 7))
       if col_in_screen(i - 1) then
         local param, col = {}, 0
         if #text == 0 and i - 1 > 0 then
