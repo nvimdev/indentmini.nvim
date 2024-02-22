@@ -9,17 +9,6 @@ local function col_in_screen(col)
   return col >= leftcol
 end
 
-local function hl_group(hi_colors, shiftw, index)
-  local hi_name = 'IndentLine'
-  if #hi_colors ~= 0 then
-    local iteration = math.floor((index - 1) / shiftw) + 1
-    local idx = (iteration - 1) % #hi_colors + 1
-    hi_name = string.format('%s%d', hi_name, iteration)
-
-    vim.cmd.highlight('default link ' .. hi_name .. ' ' .. hi_colors[idx])
-  end
-end
-
 local function indent_step(bufnr)
   if vim.fn.exists('*shiftwidth') == 1 then
     return vim.fn.shiftwidth()
@@ -57,7 +46,14 @@ local function indentline(opts)
 
     local shiftw = indent_step(bufnr)
     for i = 1, indent - 1, shiftw do
-      local hi_name = hl_group(opts.hi_colors, shiftw, i)
+      local hi_name = 'IndentLine'
+      if #opts.hi_colors ~= 0 then
+        local iteration = math.floor((i - 1) / shiftw) + 1
+        local idx = (iteration - 1) % #opts.hi_colors + 1
+        hi_name = string.format('%s%d', hi_name, iteration)
+
+        vim.cmd.highlight('default link ' .. hi_name .. ' ' .. opts.hi_colors[idx])
+      end
 
       if col_in_screen(i - 1) then
         local param, col = {}, 0
