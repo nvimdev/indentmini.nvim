@@ -17,10 +17,12 @@ require('lazy').setup({
 
 ## Config
 
-- char    -- string type default is  `│`,
-- exclude -- table  type add exclude filetype in this table
+- char     -- string type default is  `│`,
+- exclude  -- table  type add exclude filetype in this table
+- hi_group -- table  type highlight groups to use
 
-highlight group is `IndentLine`. you can use this to link it to `Comment`
+highlight groups for indentation markers are created automatically by passing in a list
+of groups. Indentation colors will appear in the order they are passed in.
 
 ```lua
 config = function()
@@ -30,9 +32,14 @@ config = function()
             "erlang",
             "markdown",
         }
+        hi_group = {
+            'Comment',
+            'Function',
+            'Constant',
+            'MyIndentation'
+        }
     })
-    -- use comment color
-    vim.cmd.highlight("default link IndentLine Comment")
+    vim.cmd.highlight('MyIndentation guifg=#32a852')
 end,
 ```
 
