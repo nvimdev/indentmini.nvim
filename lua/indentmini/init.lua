@@ -48,7 +48,7 @@ local function indentline()
     for i = 1, indent - 1, shiftw do
       local hi_name = 'IndentLine'
       local iteration = math.floor((i - 1) / shiftw) + 1
-      hi_name = string.format('%s%d', hi_name, iteration % 6 + 1)
+      hi_name = string.format('%s%d', hi_name, (iteration - 1) % 6 + 1)
 
       if col_in_screen(i - 1) then
         local param, col = {}, 0
