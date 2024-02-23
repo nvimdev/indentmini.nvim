@@ -22,7 +22,7 @@ local function indent_step(bufnr)
   end
 end
 
-local function indentline(opts)
+local function indentline()
   local function on_win(_, _, bufnr, _)
     if bufnr ~= vim.api.nvim_get_current_buf() then
       return false
@@ -47,13 +47,8 @@ local function indentline(opts)
     local shiftw = indent_step(bufnr)
     for i = 1, indent - 1, shiftw do
       local hi_name = 'IndentLine'
-      -- if opts.hi_colors and #opts.hi_colors ~= 0 then
       local iteration = math.floor((i - 1) / shiftw) + 1
-      -- local idx = (iteration - 1) % #opts.hi_colors + 1
       hi_name = string.format('%s%d', hi_name, iteration)
-
-      -- vim.cmd.highlight('default link ' .. hi_name .. ' ' .. opts.hi_colors[idx])
-      -- end
 
       if col_in_screen(i - 1) then
         local param, col = {}, 0
@@ -118,7 +113,7 @@ local function setup(opt)
   nvim_create_autocmd('BufEnter', {
     group = group,
     callback = function()
-      indentline({ hi_colors = opt.hi_colors })
+      indentline()
     end,
   })
 end
