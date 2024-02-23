@@ -47,13 +47,13 @@ local function indentline(opts)
     local shiftw = indent_step(bufnr)
     for i = 1, indent - 1, shiftw do
       local hi_name = 'IndentLine'
-      if opts.hi_colors and #opts.hi_colors ~= 0 then
-        local iteration = math.floor((i - 1) / shiftw) + 1
-        local idx = (iteration - 1) % #opts.hi_colors + 1
-        hi_name = string.format('%s%d', hi_name, iteration)
+      -- if opts.hi_colors and #opts.hi_colors ~= 0 then
+      local iteration = math.floor((i - 1) / shiftw) + 1
+      -- local idx = (iteration - 1) % #opts.hi_colors + 1
+      hi_name = string.format('%s%d', hi_name, iteration)
 
-        vim.cmd.highlight('default link ' .. hi_name .. ' ' .. opts.hi_colors[idx])
-      end
+      -- vim.cmd.highlight('default link ' .. hi_name .. ' ' .. opts.hi_colors[idx])
+      -- end
 
       if col_in_screen(i - 1) then
         local param, col = {}, 0
