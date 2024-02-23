@@ -48,7 +48,7 @@ local function indentline()
     for i = 1, indent - 1, shiftw do
       local hi_name = 'IndentLine'
       local iteration = math.floor((i - 1) / shiftw) + 1
-      local it = iteration % 5
+      local it = iteration % 7
       print(iteration, it)
       hi_name = string.format('%s%d', hi_name, it == 0 and 1 or it)
 
