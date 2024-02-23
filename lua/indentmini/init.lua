@@ -9,6 +9,19 @@ local function col_in_screen(col)
   return col >= leftcol
 end
 
+local hl_groups = {}
+local all_highlights = vim.api.nvim_exec('highlight', true)
+for _, line in ipairs(vim.split(all_highlights, '\n')) do
+  local imhl = string.match(line, 'IndentLine%d+')
+  if imhl then
+    if hl_groups[imhl] then
+      break
+    else
+      table.insert(hl_groups, imhl)
+    end
+  end
+end
+
 local function indent_step(bufnr)
   if vim.fn.exists('*shiftwidth') == 1 then
     return vim.fn.shiftwidth()
@@ -43,19 +56,6 @@ local function indentline()
     end
 
     ctx[row] = indent
-
-    local hl_groups = {}
-    local all_highlights = vim.api.nvim_exec('highlight', true)
-    for _, line in ipairs(vim.split(all_highlights, '\n')) do
-      local imhl = string.match(line, 'IndentLine%d+')
-      if imhl then
-        if hl_groups[imhl] then
-          break
-        else
-          table.insert(hl_groups, imhl)
-        end
-      end
-    end
 
     local shiftw = indent_step(bufnr)
     for i = 1, indent - 1, shiftw do
