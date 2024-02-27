@@ -58,6 +58,7 @@ local function indentline()
           local looped_level = ((indent_level - 1) % last_defined_level) + 1
           hi_name = ('IndentLine%d'):format(looped_level)
         else
+          hi_name = 'IndentLine'
           -- If no last_defined_level is set yet, just set it as the current one
           last_defined_level = indent_level
         end

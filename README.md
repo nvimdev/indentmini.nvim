@@ -32,8 +32,7 @@ config = function()
 
     -- Colors are applied automatically based on user-defined highlight groups.
     -- There is no default value.
-    vim.cmd.highlight('IndentLine1 guifg=#123456')
-    vim.cmd([[highlight IndentLine2 guifg=#123456]])
+    vim.cmd.highlight('IndentLine guifg=#123456')
 end,
 ```
 
