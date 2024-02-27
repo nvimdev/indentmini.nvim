@@ -47,21 +47,21 @@ also set it up with different colors per-scheme if you'd like.
     -- create a function to set the colors
       local setColors = function()
         local hi_colors = {
-          'guifg=#AD7021',
-          'guifg=#8887C3',
-          'guifg=#738A05',
-          'guifg=#5F819D',
-          'guifg=#9E8FB2',
-          'guifg=#907AA9',
-          'guifg=#CDA869',
-          'guifg=#8F9D6A',
+          '#AD7021',
+          '#8887C3',
+          '#738A05',
+          '#5F819D',
+          '#9E8FB2',
+          '#907AA9',
+          '#CDA869',
+          '#8F9D6A',
         }
 
         -- you could add some logic here to conditionally set the
         -- highlight colors based on what scheme you're switching to.
 
         for i, val in pairs(hi_colors) do
-          vim.cmd.highlight('IndentLine' .. i .. ' ' .. val)
+          vim.api.nvim_set_hl(0, 'IndentLine' .. i, { fg = val })
         end
       end
 
