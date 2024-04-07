@@ -22,7 +22,7 @@ local function indent_step(bufnr)
   end
 end
 
-local function indentline()
+local function indentline(group)
   local function on_win(_, _, bufnr, _)
     if bufnr ~= vim.api.nvim_get_current_buf() then
       return false
@@ -30,6 +30,12 @@ local function indentline()
   end
 
   local ctx = {}
+  vim.api.nvim_create_autocmd('BufDelete', {
+    group = group,
+    callback = function()
+      ctx = {}
+    end,
+  })
   local function on_line(_, _, bufnr, row)
     local indent = vim.fn.indent(row + 1)
     local ok, lines = pcall(api.nvim_buf_get_text, bufnr, row, 0, row, -1, {})
@@ -93,10 +99,6 @@ local function indentline()
     end
   end
 
-  local function on_end()
-    ctx = {}
-  end
-
   local function on_start(_, _)
     local bufnr = api.nvim_get_current_buf()
     local exclude_buftype = { 'nofile', 'terminal' }
@@ -113,7 +115,6 @@ local function indentline()
     on_win = on_win,
     on_start = on_start,
     on_line = on_line,
-    on_end = on_end,
   })
 end
 
@@ -131,7 +132,7 @@ local function setup(opt)
   nvim_create_autocmd('BufEnter', {
     group = group,
     callback = function()
-      indentline()
+      indentline(group)
     end,
   })
 end
