@@ -9,17 +9,10 @@ local function col_in_screen(col)
   return col >= leftcol
 end
 
-local function indent_step(bufnr)
-  if vim.fn.exists('*shiftwidth') == 1 then
-    return vim.fn.shiftwidth()
-  elseif vim.fn.exists('&shiftwidth') == 1 then
-    -- implementation of shiftwidth builtin
-    if vim.bo[bufnr].shiftwidth ~= 0 then
-      return vim.bo[bufnr].shiftwidth
-    elseif vim.bo[bufnr].tabstop ~= 0 then
-      return vim.bo[bufnr].tabstop
-    end
-  end
+local function non_char_under(row, col)
+  local text = api.nvim_buf_get_text(0, row, col, row, col + 1, {})[1]
+  print(vim.inspect(text), 'here')
+  return #text == 0
 end
 
 local function indentline(group)
@@ -50,7 +43,7 @@ local function indentline(group)
 
     ctx[row] = indent
 
-    local shiftw = indent_step(bufnr)
+    local shiftw = vim.fn.shiftwidth()
     local last_defined_level = 0
     for i = 1, indent - 1, shiftw do
       local indent_level = math.floor((i - 1) / shiftw) + 1
@@ -93,8 +86,9 @@ local function indentline(group)
           }
           col = i - 1
         end
-
-        nvim_buf_set_extmark(bufnr, ns, row, col, param)
+        if non_char_under(row, col) then
+          nvim_buf_set_extmark(bufnr, ns, row, col, param)
+        end
       end
     end
   end
