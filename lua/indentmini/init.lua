@@ -9,9 +9,9 @@ local function col_in_screen(col)
   return col >= leftcol
 end
 
-local function non_char_under(row, col)
+local function can_set(row, col)
   local text = api.nvim_buf_get_text(0, row, col, row, col + 1, {})[1]
-  return #text == 0
+  return text ~= '\t' and text:find('%s')
 end
 
 local function indentline(group)
@@ -85,7 +85,8 @@ local function indentline(group)
           }
           col = i - 1
         end
-        if non_char_under(row, col) then
+
+        if can_set(row, col) then
           nvim_buf_set_extmark(bufnr, ns, row, col, param)
         end
       end
