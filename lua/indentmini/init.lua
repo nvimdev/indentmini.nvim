@@ -11,7 +11,6 @@ end
 
 local function non_char_under(row, col)
   local text = api.nvim_buf_get_text(0, row, col, row, col + 1, {})[1]
-  print(vim.inspect(text), 'here')
   return #text == 0
 end
 
