@@ -9,13 +9,17 @@ local function screen(lines)
   local channel = vim.fn.sockconnect('pipe', address, { rpc = true })
 
   local current_dir = vim.fn.getcwd()
-
   vim.rpcrequest(channel, 'nvim_set_option_value', 'rtp', current_dir, { scope = 'global' })
   vim.rpcrequest(channel, 'nvim_exec_lua', 'require("indentmini").setup({})', {})
   vim.rpcrequest(channel, 'nvim_set_option_value', 'columns', 26, { scope = 'global' })
   vim.rpcrequest(channel, 'nvim_set_option_value', 'lines', #lines + 2, { scope = 'global' })
-  vim.rpcrequest(channel, 'nvim_exec_autocmds', 'BufEnter', { group = 'IndentMini' })
+  --indent set
+  vim.rpcrequest(channel, 'nvim_set_option_value', 'expandtab', true, { scope = 'global' })
+  vim.rpcrequest(channel, 'nvim_set_option_value', 'shiftwidth', 2, { scope = 'global' })
+  vim.rpcrequest(channel, 'nvim_set_option_value', 'tabstop', 2, { scope = 'global' })
+  vim.rpcrequest(channel, 'nvim_set_option_value', 'softtabstop', 2, { scope = 'global' })
 
+  vim.rpcrequest(channel, 'nvim_exec_autocmds', 'BufEnter', { group = 'IndentMini' })
   vim.rpcrequest(channel, 'nvim_set_option_value', 'shiftwidth', 2, { buf = 0 })
   vim.rpcrequest(channel, 'nvim_set_option_value', 'expandtab', true, { buf = 0 })
 
@@ -65,11 +69,10 @@ describe('indent mini', function()
     }
     local char = '┇'
     local screenstr = screen(lines)
-    for _, line in ipairs(screenstr) do
-      print(vim.inspect(line))
-    end
-
-    local expect = {
+    -- for _, line in ipairs(screenstr) do
+    --   print(vim.inspect(line))
+    -- end
+    local expected = {
       'local function test()     ',
       '┇ local a = 10            ',
       '┇ local b = 20            ',
@@ -83,6 +86,23 @@ describe('indent mini', function()
       'end                       ',
     }
 
-    assert.same(expect, screenstr)
+    assert.same(expected, screenstr)
+  end)
+
+  it('not work when line has tab character', function ()
+    local lines = {
+      'functio test_tab()',
+      '\tprint("hello")',
+      '\tprint("world")',
+      'end'
+    }
+    local screenstr = screen(lines)
+    local expected = {
+      'functio test_tab()        ',
+      '        print("hello")    ',
+      '        print("world")    ',
+      'end                       ',
+    }
+    assert.same(expected, screenstr)
   end)
 end)
