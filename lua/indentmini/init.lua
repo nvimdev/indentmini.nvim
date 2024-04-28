@@ -103,20 +103,18 @@ local function indentline(opt)
   })
 end
 
-local function setup(opt)
-  opt = vim.tbl_extend('force', {
-    char = '┇',
-    exclude = { 'dashboard', 'lazy', 'help', 'markdown' },
-  }, opt or {})
-
-  au('BufEnter', {
-    group = api.nvim_create_augroup('IndentMini', { clear = true }),
-    callback = function()
-      indentline(opt)
-    end,
-  })
-end
-
 return {
-  setup = setup,
+  setup = function(opt)
+    opt = vim.tbl_extend('force', {
+      char = '┇',
+      exclude = { 'dashboard', 'lazy', 'help', 'markdown' },
+    }, opt or {})
+
+    au('BufEnter', {
+      group = api.nvim_create_augroup('IndentMini', { clear = true }),
+      callback = function()
+        indentline(opt)
+      end,
+    })
+  end,
 }
