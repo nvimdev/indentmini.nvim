@@ -1,5 +1,5 @@
 # indentmini.nvim
-A minimal and blazing fast indentline plugin by using `nvim_set_decoration_provide` api
+A minimal less than ~100 lines and blazing fast indentline plugin. no much more features.
 
 ## Install
 
