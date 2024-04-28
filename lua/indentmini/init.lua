@@ -32,6 +32,7 @@ local function indentline(opt)
       return
     end
     local line_is_empty = #lines[1] == 0
+    local shiftw = vim.fn.shiftwidth()
     if indent == 0 and line_is_empty then
       local prev_row = row - 1
       while true do
@@ -42,15 +43,14 @@ local function indentline(opt)
         local prev_indent = indent_fn(prev_row + 1)
         if prev_indent == 0 and #lines[1] ~= 0 then
           break
-        else
-          indent = prev_indent
+        elseif #lines[1] ~= 0 and prev_indent > 0 then
+          indent = prev_indent + shiftw
           break
         end
         prev_row = prev_row - 1
       end
     end
 
-    local shiftw = vim.fn.shiftwidth()
     local last_defined_level = 0
     for i = 1, indent - 1, shiftw do
       local col = i - 1
