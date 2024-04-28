@@ -89,12 +89,12 @@ describe('indent mini', function()
     assert.same(expected, screenstr)
   end)
 
-  it('not work when line has tab character', function ()
+  it('not work when line has tab character', function()
     local lines = {
       'functio test_tab()',
       '\tprint("hello")',
       '\tprint("world")',
-      'end'
+      'end',
     }
     local screenstr = screen(lines)
     local expected = {
