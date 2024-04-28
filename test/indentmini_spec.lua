@@ -105,4 +105,38 @@ describe('indent mini', function()
     }
     assert.same(expected, screenstr)
   end)
+
+  it('works on blank line', function()
+    local lines = {
+      'local function test()',
+      '  while true do',
+      '    if true then',
+      '      if true then',
+      '',
+      '',
+      '',
+      '        print("test")',
+      '      end',
+      '    end',
+      '  end',
+      'end',
+    }
+
+    local screenstr = screen(lines)
+    local expected = {
+      'local function test()     ',
+      '┇ while true do           ',
+      '┇ ┇ if true then          ',
+      '┇ ┇ ┇ if true then        ',
+      '┇ ┇ ┇ ┇                   ',
+      '┇ ┇ ┇ ┇                   ',
+      '┇ ┇ ┇ ┇                   ',
+      '┇ ┇ ┇ ┇ print("test")     ',
+      '┇ ┇ ┇ end                 ',
+      '┇ ┇ end                   ',
+      '┇ end                     ',
+      'end                       ',
+    }
+    assert.same(expected, screenstr)
+  end)
 end)
