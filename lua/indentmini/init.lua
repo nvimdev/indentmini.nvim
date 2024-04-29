@@ -1,6 +1,7 @@
 local api = vim.api
 local au, nvim_buf_set_extmark = api.nvim_create_autocmd, api.nvim_buf_set_extmark
 local ns = api.nvim_create_namespace('IndentLine')
+local g = api.nvim_create_augroup('IndentMini', { clear = true })
 local indent_fn = vim.fn.indent
 
 ---check column in screen
@@ -13,8 +14,11 @@ local function is_space(row, col)
   return text and (#text == 0 or text == ' ') or false
 end
 
-local function on_win(_, _, bufnr, _)
-  return bufnr ~= vim.api.nvim_get_current_buf() and false or true
+local function on_win(_, winid, bufnr, _)
+  if bufnr ~= vim.api.nvim_get_current_buf() then
+    return false
+  end
+  api.nvim_win_set_hl_ns(winid, ns)
 end
 
 local config = {
@@ -24,7 +28,7 @@ local config = {
 }
 
 local function indentline(opt)
-  local function invalid_buf(bufnr)
+  local invalid_buf = function(bufnr)
     if
       not vim.bo[bufnr].expandtab
       or vim.tbl_contains({ 'nofile', 'terminal' }, vim.bo[bufnr].buftype)
@@ -64,28 +68,10 @@ local function indentline(opt)
       end
     end
 
-    local last_defined_level = 0
     for i = 1, indent - 1, shiftw do
       local col = i - 1
       local indent_level = math.floor(col / shiftw) + 1
       local hi_name = ('IndentLine%d'):format(indent_level)
-      -- Attempt to fetch highlight details for the current level
-      local hl_details = api.nvim_get_hl(0, { name = hi_name })
-      -- If no custom highlight details are found, use the last defined level for looping back
-      if vim.tbl_isempty(hl_details) then
-        if last_defined_level > 0 then
-          local looped_level = ((indent_level - 1) % last_defined_level) + 1
-          hi_name = ('IndentLine%d'):format(looped_level)
-        else
-          hi_name = 'IndentLine'
-          -- If no last_defined_level is set yet, just set it as the current one
-          last_defined_level = indent_level
-        end
-      else
-        -- If highlight details are found, update last_defined_level
-        last_defined_level = indent_level
-      end
-
       if col_in_screen(col) and is_space(row, col) then
         config.virt_text[1][2] = hi_name
         if line_is_empty and col > 0 then
@@ -93,7 +79,7 @@ local function indentline(opt)
         end
         nvim_buf_set_extmark(bufnr, ns, row, col, config)
         config.virt_text_win_col = nil
-        api.nvim_set_hl(0, hi_name, { link = 'IndentLine', default = true })
+        api.nvim_set_hl(ns, hi_name, { link = 'IndentLine', default = true })
       end
     end
   end
@@ -116,13 +102,43 @@ return {
   setup = function(opt)
     opt = vim.tbl_extend('force', {
       char = '┇',
+      current = true,
       exclude = { 'dashboard', 'lazy', 'help', 'markdown' },
     }, opt or {})
 
     au('BufEnter', {
-      group = api.nvim_create_augroup('IndentMini', { clear = true }),
-      callback = function()
+      group = g,
+      callback = function(args)
         indentline(opt)
+        if not opt.current then
+          return
+        end
+
+        au('CursorMoved', {
+          group = g,
+          buffer = args.buf,
+          callback = function()
+            local line, _ = unpack(vim.api.nvim_win_get_cursor(0))
+            local level = math.floor(indent_fn(line) / vim.fn.shiftwidth())
+            local hls = api.nvim_get_hl(ns, {})
+            if level < 1 then
+              for k, _ in pairs(hls) do
+                api.nvim_set_hl(ns, k, { link = 'IndentLine' })
+              end
+              return
+            end
+            local name = ('IndentLine%d'):format(level)
+            if hls[name].link and hls[name].link == 'IndentLineCurrent' then
+              return
+            end
+            api.nvim_set_hl(ns, name, { link = 'IndentLineCurrent' })
+            for k, _ in pairs(hls) do
+              if k ~= name then
+                api.nvim_set_hl(ns, k, { link = 'IndentLine' })
+              end
+            end
+          end,
+        })
       end,
     })
   end,
