@@ -24,8 +24,21 @@ local config = {
 }
 
 local function indentline(opt)
+  local function invalid_buf(bufnr)
+    if
+      not vim.bo[bufnr].expandtab
+      or vim.tbl_contains({ 'nofile', 'terminal' }, vim.bo[bufnr].buftype)
+      or vim.tbl_contains(opt.exclude, vim.bo[bufnr].ft)
+    then
+      return true
+    end
+  end
   config.virt_text = { { opt.char } }
   local function on_line(_, _, bufnr, row)
+    if invalid_buf(bufnr) then
+      return
+    end
+
     local indent = indent_fn(row + 1)
     local ok, lines = pcall(api.nvim_buf_get_text, bufnr, row, 0, row, -1, {})
     if not ok then
@@ -87,11 +100,7 @@ local function indentline(opt)
 
   local function on_start(_, _)
     local bufnr = api.nvim_get_current_buf()
-    if
-      not vim.bo[bufnr].expandtab
-      or vim.tbl_contains({ 'nofile', 'terminal' }, vim.bo[bufnr].buftype)
-      or vim.tbl_contains(opt.exclude, vim.bo[bufnr].ft)
-    then
+    if invalid_buf(bufnr) then
       return false
     end
   end
