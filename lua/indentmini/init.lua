@@ -128,7 +128,7 @@ return {
               return
             end
             local name = ('IndentLine%d'):format(level)
-            if hls[name].link and hls[name].link == 'IndentLineCurrent' then
+            if hls[name] and hls[name].link and hls[name].link == 'IndentLineCurrent' then
               return
             end
             api.nvim_set_hl(ns, name, { link = 'IndentLineCurrent' })
