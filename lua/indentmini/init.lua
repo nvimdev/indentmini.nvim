@@ -9,6 +9,7 @@ local function col_in_screen(col)
   return col >= vim.fn.winsaveview().leftcol
 end
 
+---check text in current column is space
 local function is_space(row, col)
   local text = api.nvim_buf_get_text(0, row, col, row, col + 1, {})[1]
   return text and (#text == 0 or text == ' ') or false
@@ -27,20 +28,23 @@ local config = {
   ephemeral = true,
 }
 
+local function event_created(e, bufnr)
+  return not vim.tbl_isempty(api.nvim_get_autocmds({
+    group = g,
+    event = e,
+    buffer = bufnr,
+  }))
+end
+
 local function indentline(opt)
-  local invalid_buf = function(bufnr)
+  config.virt_text = { { opt.char } }
+  local function on_line(_, _, bufnr, row)
     if
       not vim.bo[bufnr].expandtab
       or vim.tbl_contains({ 'nofile', 'terminal' }, vim.bo[bufnr].buftype)
       or vim.tbl_contains(opt.exclude, vim.bo[bufnr].ft)
     then
-      return true
-    end
-  end
-  config.virt_text = { { opt.char } }
-  local function on_line(_, _, bufnr, row)
-    if invalid_buf(bufnr) then
-      return
+      return false
     end
 
     local indent = indent_fn(row + 1)
@@ -82,18 +86,38 @@ local function indentline(opt)
         api.nvim_set_hl(ns, hi_name, { link = 'IndentLine', default = true })
       end
     end
-  end
 
-  local function on_start(_, _)
-    local bufnr = api.nvim_get_current_buf()
-    if invalid_buf(bufnr) then
-      return false
+    if opt.current and not event_created('CursorMoved', bufnr) then
+      au('CursorMoved', {
+        group = g,
+        buffer = bufnr,
+        callback = function()
+          local line, _ = unpack(api.nvim_win_get_cursor(0))
+          local level = math.floor(indent_fn(line) / vim.fn.shiftwidth())
+          local hls = api.nvim_get_hl(ns, {})
+          if level < 1 then
+            for k, _ in pairs(hls) do
+              api.nvim_set_hl(ns, k, { link = 'IndentLine' })
+            end
+            return
+          end
+          local name = ('IndentLine%d'):format(level)
+          if hls[name] and hls[name].link and hls[name].link == 'IndentLineCurrent' then
+            return
+          end
+          api.nvim_set_hl(ns, name, { link = 'IndentLineCurrent' })
+          for k, _ in pairs(hls) do
+            if k ~= name then
+              api.nvim_set_hl(ns, k, { link = 'IndentLine' })
+            end
+          end
+        end,
+      })
     end
   end
 
   api.nvim_set_decoration_provider(ns, {
     on_win = on_win,
-    on_start = on_start,
     on_line = on_line,
   })
 end
@@ -105,41 +129,6 @@ return {
       current = true,
       exclude = { 'dashboard', 'lazy', 'help', 'markdown' },
     }, opt or {})
-
-    au('BufEnter', {
-      group = g,
-      callback = function(args)
-        indentline(opt)
-        if not opt.current then
-          return
-        end
-
-        au('CursorMoved', {
-          group = g,
-          buffer = args.buf,
-          callback = function()
-            local line, _ = unpack(vim.api.nvim_win_get_cursor(0))
-            local level = math.floor(indent_fn(line) / vim.fn.shiftwidth())
-            local hls = api.nvim_get_hl(ns, {})
-            if level < 1 then
-              for k, _ in pairs(hls) do
-                api.nvim_set_hl(ns, k, { link = 'IndentLine' })
-              end
-              return
-            end
-            local name = ('IndentLine%d'):format(level)
-            if hls[name] and hls[name].link and hls[name].link == 'IndentLineCurrent' then
-              return
-            end
-            api.nvim_set_hl(ns, name, { link = 'IndentLineCurrent' })
-            for k, _ in pairs(hls) do
-              if k ~= name then
-                api.nvim_set_hl(ns, k, { link = 'IndentLine' })
-              end
-            end
-          end,
-        })
-      end,
-    })
+    indentline(opt)
   end,
 }
