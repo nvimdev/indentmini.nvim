@@ -92,20 +92,24 @@ local function indentline(opt)
         group = g,
         buffer = bufnr,
         callback = function()
+          local cur_hi = 'IndentLineCurrent'
           local line, _ = unpack(api.nvim_win_get_cursor(0))
           local level = math.floor(indent_fn(line) / vim.fn.shiftwidth())
           local hls = api.nvim_get_hl(ns, {})
           if level < 1 then
-            for k, _ in pairs(hls) do
-              api.nvim_set_hl(ns, k, { link = 'IndentLine' })
+            for k, v in pairs(hls) do
+              if v.link and v.link == cur_hi then
+                api.nvim_set_hl(ns, k, { link = 'IndentLine' })
+                break
+              end
             end
             return
           end
           local name = ('IndentLine%d'):format(level)
-          if hls[name] and hls[name].link and hls[name].link == 'IndentLineCurrent' then
+          if hls[name] and hls[name].link and hls[name].link == cur_hi then
             return
           end
-          api.nvim_set_hl(ns, name, { link = 'IndentLineCurrent' })
+          api.nvim_set_hl(ns, name, { link = cur_hi })
           for k, _ in pairs(hls) do
             if k ~= name then
               api.nvim_set_hl(ns, k, { link = 'IndentLine' })
