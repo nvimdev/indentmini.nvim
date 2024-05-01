@@ -65,7 +65,7 @@ local function indentline(opt)
         if prev_indent == 0 and #lines[1] ~= 0 then
           break
         elseif #lines[1] ~= 0 and prev_indent > 0 then
-          indent = prev_indent + shiftw
+          indent = prev_indent
           break
         end
         prev_row = prev_row - 1
