@@ -53,13 +53,13 @@ end
 
 local function on_line(_, _, bufnr, row)
   if
-    not vim.bo[bufnr].expandtab
-    or vim.tbl_contains({ 'nofile', 'terminal' }, vim.bo[bufnr].buftype)
-    or vim.tbl_contains(opt.exclude, vim.bo[bufnr].ft)
+    not api.nvim_get_option_value('expandtab', { scope = 'local', buf = bufnr })
+    or vim.tbl_contains(opt.exclude, function(v)
+      return v == vim.bo[bufnr].ft or v == vim.bo[bufnr].buftype
+    end)
   then
     return false
   end
-
   local indent = indent_fn(row + 1)
   local ok, lines = pcall(api.nvim_buf_get_text, bufnr, row, 0, row, -1, {})
   if not ok then
@@ -109,8 +109,7 @@ local function on_line(_, _, bufnr, row)
           return
         end
         for i = srow, erow, 1 do
-          local hi_name = ('IndentLine%d%d'):format(i + 1, curindent - 1)
-          api.nvim_set_hl(ns, hi_name, { link = cur_hi })
+          api.nvim_set_hl(ns, ('IndentLine%d%d'):format(i + 1, curindent - 1), { link = cur_hi })
         end
       end,
     })
@@ -123,7 +122,7 @@ return {
       current = conf.current or true,
       exclude = vim.tbl_extend(
         'force',
-        { 'dashboard', 'lazy', 'help', 'markdown' },
+        { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal' },
         conf.exclude or {}
       ),
       config = {
