@@ -126,8 +126,8 @@ describe('indent mini', function()
       '┇ end                     ',
       'end                       ',
     }
-
     assert.same(expected, screenstr)
+    clean()
   end)
 
   it('not work when line has tab character', function()
@@ -145,6 +145,7 @@ describe('indent mini', function()
       'end                       ',
     }
     assert.same(expected, screenstr)
+    clean()
   end)
 
   it('works on blank line', function()
@@ -179,6 +180,7 @@ describe('indent mini', function()
       'end                       ',
     }
     assert.same(expected, screenstr)
+    clean()
   end)
 
   it('works on highlight current level', function()
@@ -219,5 +221,6 @@ describe('indent mini', function()
     nvim_set_cursor(6, 8)
     local ns = get_indent_ns()
     assert.same(9, match_current_hl(6, 12, 5))
+    clean()
   end)
 end)
