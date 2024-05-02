@@ -69,9 +69,6 @@ local function on_line(_, _, bufnr, row)
   local shiftw = vim.fn.shiftwidth()
   if indent == 0 and line_is_empty then
     local target_row = find_row(bufnr, row, DOWN, true)
-    if row == 1 then
-      print(target_row)
-    end
     if target_row then
       indent = indent_fn(target_row + 1)
     end
