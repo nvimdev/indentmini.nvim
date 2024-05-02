@@ -17,14 +17,14 @@ local function nvim_instance()
 end
 
 local function nvim_set_cursor(line, col)
-  vim.rpcrequest(channel, 'nvim_win_set_cursor', 0, {line, col})
+  vim.rpcrequest(channel, 'nvim_win_set_cursor', 0, { line, col })
 end
 
 local function get_indent_ns()
-  local t = vim.rpcrequest(channel, 'nvim_get_namespaces' )
+  local t = vim.rpcrequest(channel, 'nvim_get_namespaces')
   for k, v in pairs(t) do
     if k:find('Indent') then
-      return  v
+      return v
     end
   end
 end
@@ -33,7 +33,7 @@ local function nvim_get_hl(ns)
   return vim.rpcrequest(channel, 'nvim_get_hl', ns, {})
 end
 
-local function match_current_hl(srow, erow ,col)
+local function match_current_hl(srow, erow, col)
   local cur_hi = 'IndentLineCurrent'
   local ns = get_indent_ns()
   local t = {}
@@ -181,8 +181,8 @@ describe('indent mini', function()
     assert.same(expected, screenstr)
   end)
 
-  it('works on highlight current level', function ()
-    local lines= {
+  it('works on highlight current level', function()
+    local lines = {
       'local function test_b()',
       '  local a = 10         ',
       '                       ',
