@@ -3,7 +3,7 @@ local au, nvim_buf_set_extmark = api.nvim_create_autocmd, api.nvim_buf_set_extma
 local ns = api.nvim_create_namespace('IndentLine')
 local g = api.nvim_create_augroup('IndentMini', { clear = true })
 local indent_fn = vim.fn.indent
-local UP, DOWN = -1, 1
+local UP, DOWN, opt = -1, 1, {}
 
 ---check column in screen
 local function col_in_screen(col)
@@ -34,7 +34,7 @@ local function find_row(bufnr, row, direction, render)
     end
     local non_empty = #lines[1] ~= 0
     local target_indent = indent_fn(target_row + 1)
-    if target_indent == 0 and non_empty and direction ~= DOWN and render then
+    if target_indent == 0 and non_empty and render then
       break
     elseif non_empty and (render and target_indent > curindent or target_indent < curindent) then
       return target_row
@@ -42,12 +42,6 @@ local function find_row(bufnr, row, direction, render)
     target_row = target_row + direction
   end
 end
-
-local config = {
-  virt_text_pos = 'overlay',
-  hl_mode = 'combine',
-  ephemeral = true,
-}
 
 local function event_created(e, bufnr)
   return not vim.tbl_isempty(api.nvim_get_autocmds({
@@ -57,87 +51,94 @@ local function event_created(e, bufnr)
   }))
 end
 
-local function indentline(opt)
-  config.virt_text = { { opt.char } }
-  local function on_line(_, _, bufnr, row)
-    if
-      not vim.bo[bufnr].expandtab
-      or vim.tbl_contains({ 'nofile', 'terminal' }, vim.bo[bufnr].buftype)
-      or vim.tbl_contains(opt.exclude, vim.bo[bufnr].ft)
-    then
-      return false
-    end
+local function on_line(_, _, bufnr, row)
+  if
+    not vim.bo[bufnr].expandtab
+    or vim.tbl_contains({ 'nofile', 'terminal' }, vim.bo[bufnr].buftype)
+    or vim.tbl_contains(opt.exclude, vim.bo[bufnr].ft)
+  then
+    return false
+  end
 
-    local indent = indent_fn(row + 1)
-    local ok, lines = pcall(api.nvim_buf_get_text, bufnr, row, 0, row, -1, {})
-    if not ok then
-      return
+  local indent = indent_fn(row + 1)
+  local ok, lines = pcall(api.nvim_buf_get_text, bufnr, row, 0, row, -1, {})
+  if not ok then
+    return
+  end
+  local line_is_empty = #lines[1] == 0
+  local shiftw = vim.fn.shiftwidth()
+  if indent == 0 and line_is_empty then
+    local target_row = find_row(bufnr, row, DOWN, true)
+    if row == 1 then
+      print(target_row)
     end
-    local line_is_empty = #lines[1] == 0
-    local shiftw = vim.fn.shiftwidth()
-    if indent == 0 and line_is_empty then
-      local target_row = find_row(bufnr, row, DOWN, true)
-      if target_row then
-        indent = indent_fn(target_row + 1)
-      end
-    end
-
-    for i = 1, indent - 1, shiftw do
-      local col = i - 1
-      local hi_name = ('IndentLine%d%d'):format(row + 1, col + 1)
-      if col_in_screen(col) and is_space(row, col) then
-        config.virt_text[1][2] = hi_name
-        if line_is_empty and col > 0 then
-          config.virt_text_win_col = i - 1
-        end
-        nvim_buf_set_extmark(bufnr, ns, row, col, config)
-        config.virt_text_win_col = nil
-        api.nvim_set_hl(ns, hi_name, { link = 'IndentLine', default = true })
-      end
-    end
-
-    if opt.current and not event_created('CursorMoved', bufnr) then
-      au('CursorMoved', {
-        group = g,
-        buffer = bufnr,
-        callback = function(data)
-          local cur_hi = 'IndentLineCurrent'
-          local line, _ = unpack(api.nvim_win_get_cursor(0))
-          local curindent = indent_fn(line)
-          local srow = find_row(data.buf, line - 1, UP, false) or 0
-          local erow = find_row(data.buf, line - 1, DOWN, false) or 0
-          local hls = api.nvim_get_hl(ns, {})
-          --TODO(glepnir): can there use w0 or w$ for clear the visible screen indent highlight ?
-          for k, v in pairs(hls) do
-            if v.link and v.link == cur_hi then
-              api.nvim_set_hl(ns, k, { link = 'IndentLine', force = true })
-            end
-          end
-          if erow < 1 then
-            return
-          end
-          for i = srow, erow, 1 do
-            local hi_name = ('IndentLine%d%d'):format(i + 1, curindent - 1)
-            api.nvim_set_hl(ns, hi_name, { link = cur_hi })
-          end
-        end,
-      })
+    if target_row then
+      indent = indent_fn(target_row + 1)
     end
   end
 
-  api.nvim_set_decoration_provider(ns, {
-    on_win = on_win,
-    on_line = on_line,
-  })
+  for i = 1, indent - 1, shiftw do
+    local col = i - 1
+    local hi_name = ('IndentLine%d%d'):format(row + 1, col + 1)
+    if col_in_screen(col) and is_space(row, col) then
+      opt.config.virt_text[1][2] = hi_name
+      if line_is_empty and col > 0 then
+        opt.config.virt_text_win_col = i - 1
+      end
+      nvim_buf_set_extmark(bufnr, ns, row, col, opt.config)
+      opt.config.virt_text_win_col = nil
+      api.nvim_set_hl(ns, hi_name, { link = 'IndentLine', default = true })
+    end
+  end
+
+  if opt.current and not event_created('CursorMoved', bufnr) then
+    au('CursorMoved', {
+      group = g,
+      buffer = bufnr,
+      callback = function(data)
+        local cur_hi = 'IndentLineCurrent'
+        local line, _ = unpack(api.nvim_win_get_cursor(0))
+        local curindent = indent_fn(line)
+        local srow = find_row(data.buf, line - 1, UP, false) or 0
+        local erow = find_row(data.buf, line - 1, DOWN, false) or 0
+        local hls = api.nvim_get_hl(ns, {})
+        --TODO(glepnir): can there use w0 or w$ for clear the visible screen indent highlight ?
+        for k, v in pairs(hls) do
+          if v.link and v.link == cur_hi then
+            api.nvim_set_hl(ns, k, { link = 'IndentLine', force = true })
+          end
+        end
+        if erow < 1 then
+          return
+        end
+        for i = srow, erow, 1 do
+          local hi_name = ('IndentLine%d%d'):format(i + 1, curindent - 1)
+          api.nvim_set_hl(ns, hi_name, { link = cur_hi })
+        end
+      end,
+    })
+  end
 end
 
 return {
-  setup = function(opt)
-    opt = vim.tbl_extend('force', {
-      char = '┇',
-      current = true,
-      exclude = { 'dashboard', 'lazy', 'help', 'markdown' },
-    }, opt or {})
-    indentline(opt)
+  setup = function(conf)
+    opt = {
+      current = conf.current or true,
+      exclude = vim.tbl_extend(
+        'force',
+        { 'dashboard', 'lazy', 'help', 'markdown' },
+        conf.exclude or {}
+      ),
+      config = {
+        virt_text = { { conf.char or '┇' } },
+        virt_text_pos = 'overlay',
+        hl_mode = 'combine',
+        ephemeral = true,
+      },
+    }
+    api.nvim_set_decoration_provider(ns, {
+      on_win = on_win,
+      on_line = on_line,
+    })
   end,
 }
