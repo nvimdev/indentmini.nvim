@@ -107,7 +107,7 @@ local function indentline(opt)
           local srow = find_row(data.buf, line - 1, UP, false) or 0
           local erow = find_row(data.buf, line - 1, DOWN, false) or 0
           local hls = api.nvim_get_hl(ns, {})
-          --TODO(glepnir): can there use w0 or w$ for clear the visible screen indent hiighlight ?
+          --TODO(glepnir): can there use w0 or w$ for clear the visible screen indent highlight ?
           for k, v in pairs(hls) do
             if v.link and v.link == cur_hi then
               api.nvim_set_hl(ns, k, { link = 'IndentLine', force = true })
