@@ -75,7 +75,8 @@ local function on_line(_, _, bufnr, row)
 
   for i = 1, indent - 1, shiftw do
     local col = i - 1
-    local hi_name = ('IndentLine%d%d'):format(row + 1, col + 1)
+    local level = math.floor(col / shiftw) + 1
+    local hi_name = ('IndentLine%d%d'):format(row + 1, level)
     if col_in_screen(col) and is_space(row, col) then
       opt.config.virt_text[1][2] = hi_name
       if line_is_empty and col > 0 then
@@ -107,8 +108,10 @@ local function on_line(_, _, bufnr, row)
         if erow < 1 then
           return
         end
-        for i = srow, erow, 1 do
-          api.nvim_set_hl(ns, ('IndentLine%d%d'):format(i + 1, curindent - 1), { link = cur_hi })
+
+        local level = math.floor(curindent / shiftw)
+        for i = srow + 1, erow, 1 do
+          api.nvim_set_hl(ns, ('IndentLine%d%d'):format(i + 1, level), { link = cur_hi })
         end
       end,
     })

@@ -12,7 +12,7 @@ install with any plugin management or default vim package.
 available config values in setup table.
 
 - char     -- string type default is `┇`,
-- ucrrent  -- boolean highlight current indent level
+- current  -- boolean highlight current indent level
 - exclude  -- table  type add exclude filetype in this table ie `{ 'markdown', 'xxx'}`
 
 ```lua
