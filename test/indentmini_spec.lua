@@ -1,13 +1,54 @@
 local api = vim.api
 require('indentmini').setup({})
 
-local function screen(lines)
+local channel, job_id
+
+local function clean()
+  vim.fn.jobstop(job_id)
+  job_id = nil
+  channel = nil
+end
+
+local function nvim_instance()
   local address = vim.fn.tempname()
-  vim.fn.jobstart({ 'nvim', '--clean', '-n', '--listen', address }, { pty = true })
+  job_id = vim.fn.jobstart({ 'nvim', '--clean', '-n', '--listen', address }, { pty = true })
   vim.loop.sleep(200)
+  return vim.fn.sockconnect('pipe', address, { rpc = true })
+end
 
-  local channel = vim.fn.sockconnect('pipe', address, { rpc = true })
+local function nvim_set_cursor(line, col)
+  vim.rpcrequest(channel, 'nvim_win_set_cursor', 0, {line, col})
+end
 
+local function get_indent_ns()
+  local t = vim.rpcrequest(channel, 'nvim_get_namespaces' )
+  for k, v in pairs(t) do
+    if k:find('Indent') then
+      return  v
+    end
+  end
+end
+
+local function nvim_get_hl(ns)
+  return vim.rpcrequest(channel, 'nvim_get_hl', ns, {})
+end
+
+local function match_current_hl(srow, erow ,col)
+  local cur_hi = 'IndentLineCurrent'
+  local ns = get_indent_ns()
+  local t = {}
+  for k, v in pairs(nvim_get_hl(ns) or {}) do
+    if v.link and v.link == cur_hi then
+      t[#t + 1] = k:match('IndentLine(%d+)5')
+    end
+  end
+  return #t
+end
+
+local function screen(lines)
+  if not channel then
+    channel = nvim_instance()
+  end
   local current_dir = vim.fn.getcwd()
   vim.rpcrequest(channel, 'nvim_set_option_value', 'rtp', current_dir, { scope = 'global' })
   vim.rpcrequest(channel, 'nvim_exec_lua', 'require("indentmini").setup({})', {})
@@ -138,5 +179,45 @@ describe('indent mini', function()
       'end                       ',
     }
     assert.same(expected, screenstr)
+  end)
+
+  it('works on highlight current level', function ()
+    local lines= {
+      'local function test_b()',
+      '  local a = 10         ',
+      '                       ',
+      '  if true then         ',
+      '    if true then       ',
+      '      local b = 20     ',
+      '                       ',
+      '      while true do    ',
+      '        print("hello") ',
+      '      end              ',
+      '                       ',
+      '      print("here")    ',
+      '    end                ',
+      '  end                  ',
+      'end                    ',
+      '                       ',
+      'local function test()  ',
+      '  local a = 10         ',
+      '                       ',
+      '  if true then         ',
+      '    if true then       ',
+      '      local b = 20     ',
+      '                       ',
+      '      while true do    ',
+      '        print("hello") ',
+      '      end              ',
+      '                       ',
+      '      print("here")    ',
+      '    end                ',
+      '  end                  ',
+      'end                    ',
+    }
+    screen(lines)
+    nvim_set_cursor(6, 8)
+    local ns = get_indent_ns()
+    assert.same(9, match_current_hl(6, 12, 5))
   end)
 end)
