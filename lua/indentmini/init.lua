@@ -23,10 +23,9 @@ local function on_win(_, winid, bufnr, _)
   api.nvim_win_set_hl_ns(winid, ns)
 end
 
-local function find_row(bufnr, row, direction, render)
+local function find_row(bufnr, row, curindent, direction, render)
   local target_row = row + direction
   local count = api.nvim_buf_line_count(bufnr)
-  local curindent = indent_fn(row + 1)
   while true do
     local ok, lines = pcall(api.nvim_buf_get_text, bufnr, target_row, 0, target_row, -1, {})
     if not ok or target_row < 0 or target_row > count - 1 then
@@ -68,7 +67,7 @@ local function on_line(_, _, bufnr, row)
   local line_is_empty = #lines[1] == 0
   local shiftw = vim.fn.shiftwidth()
   if indent == 0 and line_is_empty then
-    local target_row = find_row(bufnr, row, DOWN, true)
+    local target_row = find_row(bufnr, row, indent, DOWN, true)
     if target_row then
       indent = indent_fn(target_row + 1)
     end
@@ -96,8 +95,8 @@ local function on_line(_, _, bufnr, row)
         local cur_hi = 'IndentLineCurrent'
         local line, _ = unpack(api.nvim_win_get_cursor(0))
         local curindent = indent_fn(line)
-        local srow = find_row(data.buf, line - 1, UP, false) or 0
-        local erow = find_row(data.buf, line - 1, DOWN, false) or 0
+        local srow = find_row(data.buf, line - 1, curindent, UP, false) or 0
+        local erow = find_row(data.buf, line - 1, curindent, DOWN, false) or 0
         local hls = api.nvim_get_hl(ns, {})
         --TODO(glepnir): can there use w0 or w$ for clear the visible screen indent highlight ?
         for k, v in pairs(hls) do
