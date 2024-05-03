@@ -11,7 +11,7 @@ local function col_in_screen(col)
 end
 
 ---check text in current column is space
-local function is_space(row, col)
+local function non_or_space(row, col)
   local text = api.nvim_buf_get_text(0, row, col, row, col + 1, {})[1]
   return text and (#text == 0 or text == ' ') or false
 end
@@ -77,7 +77,7 @@ local function on_line(_, _, bufnr, row)
     local col = i - 1
     local level = math.floor(col / shiftw) + 1
     local hi_name = ('IndentLine%d%d'):format(row + 1, level)
-    if col_in_screen(col) and is_space(row, col) then
+    if col_in_screen(col) and non_or_space(row, col) then
       opt.config.virt_text[1][2] = hi_name
       if line_is_empty and col > 0 then
         opt.config.virt_text_win_col = i - 1
