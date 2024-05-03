@@ -27,8 +27,11 @@ local function find_row(bufnr, row, curindent, direction, render)
   local target_row = row + direction
   local count = api.nvim_buf_line_count(bufnr)
   while true do
-    local text = api.nvim_buf_get_text(bufnr, target_row, 0, target_row, -1, {})[1]
-    local non_empty = #text > 0
+    local ok, lines = pcall(api.nvim_buf_get_text, bufnr, target_row, 0, target_row, -1, {})
+    if not ok then
+      return
+    end
+    local non_empty = #lines[1] > 0
     local target_indent = indent_fn(target_row + 1)
     if target_indent == 0 and non_empty and render then
       break
