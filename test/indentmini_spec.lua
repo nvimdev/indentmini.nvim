@@ -1,5 +1,5 @@
 local api = vim.api
-require('indentmini').setup({})
+require('indentmini').setup()
 
 local channel, job_id
 
@@ -33,13 +33,13 @@ local function nvim_get_hl(ns)
   return vim.rpcrequest(channel, 'nvim_get_hl', ns, {})
 end
 
-local function match_current_hl(srow, erow, col)
+local function count_current_hl()
   local cur_hi = 'IndentLineCurrent'
   local ns = get_indent_ns()
   local t = {}
   for k, v in pairs(nvim_get_hl(ns) or {}) do
     if v.link and v.link == cur_hi then
-      t[#t + 1] = k:match('IndentLine(%d+)5')
+      t[#t + 1] = k:match('IndentLine(%d+)3')
     end
   end
   return #t
@@ -115,15 +115,15 @@ describe('indent mini', function()
     -- end
     local expected = {
       'local function test()     ',
-      '┇ local a = 10            ',
-      '┇ local b = 20            ',
-      '┇ while true do           ',
-      '┇ ┇ if a > b then         ',
-      '┇ ┇ ┇ if b < a then       ',
-      '┇ ┇ ┇ ┇ print("test")     ',
-      '┇ ┇ ┇ end                 ',
-      '┇ ┇ end                   ',
-      '┇ end                     ',
+      '│ local a = 10            ',
+      '│ local b = 20            ',
+      '│ while true do           ',
+      '│ │ if a > b then         ',
+      '│ │ │ if b < a then       ',
+      '│ │ │ │ print("test")     ',
+      '│ │ │ end                 ',
+      '│ │ end                   ',
+      '│ end                     ',
       'end                       ',
     }
     assert.same(expected, screenstr)
@@ -167,16 +167,16 @@ describe('indent mini', function()
     local screenstr = screen(lines)
     local expected = {
       'local function test()     ',
-      '┇ while true do           ',
-      '┇ ┇ if true then          ',
-      '┇ ┇ ┇ if true then        ',
-      '┇ ┇ ┇ ┇                   ',
-      '┇ ┇ ┇ ┇                   ',
-      '┇ ┇ ┇ ┇                   ',
-      '┇ ┇ ┇ ┇ print("test")     ',
-      '┇ ┇ ┇ end                 ',
-      '┇ ┇ end                   ',
-      '┇ end                     ',
+      '│ while true do           ',
+      '│ │ if true then          ',
+      '│ │ │ if true then        ',
+      '│ │ │ │                   ',
+      '│ │ │ │                   ',
+      '│ │ │ │                   ',
+      '│ │ │ │ print("test")     ',
+      '│ │ │ end                 ',
+      '│ │ end                   ',
+      '│ end                     ',
       'end                       ',
     }
     assert.same(expected, screenstr)
@@ -220,7 +220,7 @@ describe('indent mini', function()
     screen(lines)
     nvim_set_cursor(6, 8)
     local ns = get_indent_ns()
-    assert.same(9, match_current_hl(6, 12, 5))
+    assert.same(8, count_current_hl())
     clean()
   end)
 end)
