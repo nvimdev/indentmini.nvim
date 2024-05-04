@@ -11,13 +11,13 @@ install with any plugin management or default vim package.
 
 available config values in setup table.
 
-- char     -- string type default is `┇`,
+- char     -- string type default is `│`,
 - current  -- boolean highlight current indent level
 - exclude  -- table  type add exclude filetype in this table ie `{ 'markdown', 'xxx'}`
 
 ```lua
 config = function()
-    require("indentmini").setup({}) -- use default config
+    require("indentmini").setup() -- use default config
 end,
 ```
 

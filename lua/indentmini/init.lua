@@ -1,9 +1,17 @@
 local api = vim.api
-local au, nvim_buf_set_extmark = api.nvim_create_autocmd, api.nvim_buf_set_extmark
+local au, buf_set_extmark = api.nvim_create_autocmd, api.nvim_buf_set_extmark
+local set_decoration_provider = api.nvim_set_decoration_provider
 local ns = api.nvim_create_namespace('IndentLine')
 local g = api.nvim_create_augroup('IndentMini', { clear = true })
 local indent_fn = vim.fn.indent
-local UP, DOWN, opt = -1, 1, {}
+local UP, DOWN = -1, 1
+local opt = {
+  config = {
+    virt_text_pos = 'overlay',
+    hl_mode = 'combine',
+    ephemeral = true,
+  },
+}
 
 ---check column in screen
 local function col_in_screen(col)
@@ -85,7 +93,7 @@ local function on_line(_, _, bufnr, row)
       if line_is_empty and col > 0 then
         opt.config.virt_text_win_col = i - 1
       end
-      nvim_buf_set_extmark(bufnr, ns, row, col, opt.config)
+      buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
       api.nvim_set_hl(ns, hi_name, { link = 'IndentLine', default = true })
     end
@@ -101,9 +109,7 @@ local function on_line(_, _, bufnr, row)
         local curindent = indent_fn(line)
         local srow = find_row(data.buf, line - 1, curindent, UP, false) or 0
         local erow = find_row(data.buf, line - 1, curindent, DOWN, false) or 0
-        local hls = api.nvim_get_hl(ns, {})
-        --TODO(glepnir): can there use w0 or w$ for clear the visible screen indent highlight ?
-        for k, v in pairs(hls) do
+        for k, v in pairs(api.nvim_get_hl(ns, {}) or {}) do
           if v.link and v.link == cur_hi then
             api.nvim_set_hl(ns, k, { link = 'IndentLine', force = true })
           end
@@ -111,7 +117,6 @@ local function on_line(_, _, bufnr, row)
         if erow < 1 then
           return
         end
-
         local level = math.floor(curindent / shiftw)
         for i = srow + 1, erow, 1 do
           api.nvim_set_hl(ns, ('IndentLine%d%d'):format(i + 1, level), { link = cur_hi })
@@ -123,23 +128,14 @@ end
 
 return {
   setup = function(conf)
-    opt = {
-      current = conf.current or true,
-      exclude = vim.tbl_extend(
-        'force',
-        { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal' },
-        conf.exclude or {}
-      ),
-      config = {
-        virt_text = { { conf.char or '┇' } },
-        virt_text_pos = 'overlay',
-        hl_mode = 'combine',
-        ephemeral = true,
-      },
-    }
-    api.nvim_set_decoration_provider(ns, {
-      on_win = on_win,
-      on_line = on_line,
-    })
+    conf = conf or {}
+    opt.current = conf.current or true
+    opt.exclude = vim.tbl_extend(
+      'force',
+      { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal' },
+      conf.exclude or {}
+    )
+    opt.config.virt_text = { { conf.char or '│' } }
+    set_decoration_provider(ns, { on_win = on_win, on_line = on_line })
   end,
 }
