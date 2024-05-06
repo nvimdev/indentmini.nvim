@@ -120,8 +120,8 @@ local function on_line(_, _, bufnr, row)
         -- only render visible part of screen
         local toprow = vim.fn.line('w0') - 2
         local botrow = vim.fn.line('w$') - 1
-        srow = math.max(math.max(toprow, srow), 0)
-        erow = math.max(math.min(botrow, erow), api.nvim_buf_line_count(data.buf) - 1)
+        srow = math.max(toprow, srow)
+        erow = math.min(botrow, erow)
         local level = math.floor(curindent / shiftw)
         for i = srow + 1, erow, 1 do
           api.nvim_set_hl(
