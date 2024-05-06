@@ -119,7 +119,11 @@ local function on_line(_, _, bufnr, row)
         end
         local level = math.floor(curindent / shiftw)
         for i = srow + 1, erow, 1 do
-          api.nvim_set_hl(ns, ('IndentLine%d%d'):format(i + 1, level), { link = cur_hi })
+          api.nvim_set_hl(
+            ns,
+            ('IndentLine%d%d'):format(i + 1, level),
+            { link = cur_hi, force = true }
+          )
         end
       end,
     })
