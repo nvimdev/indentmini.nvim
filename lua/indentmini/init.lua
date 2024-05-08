@@ -78,10 +78,11 @@ local function on_line(_, _, bufnr, row)
   local line_is_empty = #lines[1] == 0
   local shiftw = vim.fn.shiftwidth()
   if indent == 0 and line_is_empty then
-    local target_row = find_row(bufnr, row, indent, DOWN, true)
-    if target_row then
-      indent = indent_fn(target_row + 1)
-    end
+    local top_row = find_row(bufnr, row, indent, UP, true)
+    local bot_row = find_row(bufnr, row, indent, DOWN, true)
+    local top_indent = top_row and indent_fn(top_row + 1) or 0
+    local bot_indent = bot_row and indent_fn(bot_row + 1) or 0
+    indent = math.max(top_indent, bot_indent)
   end
 
   for i = 1, indent - 1, shiftw do
@@ -99,8 +100,8 @@ local function on_line(_, _, bufnr, row)
     end
   end
 
-  if opt.current and not event_created('CursorMoved', bufnr) then
-    au('CursorMoved', {
+  if opt.current and not event_created({ 'CursorMoved', 'InsertEnter' }, bufnr) then
+    au({ 'CursorMoved', 'InsertEnter' }, {
       group = g,
       buffer = bufnr,
       callback = function(data)
@@ -118,12 +119,10 @@ local function on_line(_, _, bufnr, row)
           return
         end
         -- only render visible part of screen
-        local toprow = vim.fn.line('w0') - 2
-        local botrow = vim.fn.line('w$') - 1
-        srow = math.max(toprow, srow)
-        erow = math.min(botrow, erow)
+        srow = math.max(vim.fn.line('w0') - 2, srow)
+        erow = math.min(vim.fn.line('w$') - 1, erow)
         local level = math.floor(curindent / shiftw)
-        for i = srow + 1, erow, 1 do
+        for i = srow + 1, erow - 1, 1 do
           api.nvim_set_hl(
             ns,
             ('IndentLine%d%d'):format(i + 1, level),
