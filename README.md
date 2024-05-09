@@ -34,4 +34,9 @@ vim.cmd.highlight('IndentLine guifg=#123456')
 vim.cmd.highlight('IndentLineCurrent guifg=#123456')
 ```
 
+## Tips
+
+set the `updatetime` to 100 will have a better experience when edit in insert
+mode.
+
 ## License MIT

@@ -100,8 +100,8 @@ local function on_line(_, _, bufnr, row)
     end
   end
 
-  if opt.current and not event_created({ 'CursorMoved', 'InsertEnter' }, bufnr) then
-    au({ 'CursorMoved', 'InsertEnter' }, {
+  if opt.current and not event_created({ 'CursorMoved', 'CursorHoldI', 'InsertEnter' }, bufnr) then
+    au({ 'CursorMoved', 'CursorHoldI', 'InsertEnter' }, {
       group = g,
       buffer = bufnr,
       callback = function(data)
