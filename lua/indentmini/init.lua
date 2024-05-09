@@ -122,12 +122,8 @@ local function on_line(_, _, bufnr, row)
         srow = math.max(vim.fn.line('w0') - 2, srow)
         erow = math.min(vim.fn.line('w$') - 1, erow)
         local level = math.floor(curindent / shiftw)
-        for i = srow + 1, erow - 1, 1 do
-          api.nvim_set_hl(
-            ns,
-            ('IndentLine%d%d'):format(i + 1, level),
-            { link = cur_hi, force = true }
-          )
+        for i = srow + 2, erow, 1 do
+          api.nvim_set_hl(ns, ('IndentLine%d%d'):format(i, level), { link = cur_hi, force = true })
         end
       end,
     })
