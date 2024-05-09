@@ -1,10 +1,8 @@
 local api = vim.api
-local au, buf_set_extmark = api.nvim_create_autocmd, api.nvim_buf_set_extmark
-local set_decoration_provider = api.nvim_set_decoration_provider
+local buf_set_extmark, set_provider = api.nvim_buf_set_extmark, api.nvim_set_decoration_provider
 local ns = api.nvim_create_namespace('IndentLine')
-local g = api.nvim_create_augroup('IndentMini', { clear = true })
 local indent_fn = vim.fn.indent
-local UP, DOWN = -1, 1
+local UP, DOWN, INVALID = -1, 1, -1
 local opt = {
   config = {
     virt_text_pos = 'overlay',
@@ -53,15 +51,21 @@ local function find_row(bufnr, row, curindent, direction, render)
   end
 end
 
-local function event_created(e, bufnr)
-  return not vim.tbl_isempty(api.nvim_get_autocmds({
-    group = g,
-    event = e,
-    buffer = bufnr,
-  }))
+---@return integer top_row
+---@return integer bot_row
+---@return integer cur_inlevel
+local function current_line_range(winid, bufnr, shiftw)
+  local row = api.nvim_win_get_cursor(winid)[1] - 1
+  local indent = indent_fn(row + 1)
+  if indent == 0 then
+    return INVALID, INVALID, INVALID
+  end
+  local top_row = find_row(bufnr, row, indent, UP, false) or INVALID
+  local bot_row = find_row(bufnr, row, indent, DOWN, false) or INVALID
+  return top_row, bot_row, math.floor(indent / shiftw)
 end
 
-local function on_line(_, _, bufnr, row)
+local function on_line(_, winid, bufnr, row)
   if
     not api.nvim_get_option_value('expandtab', { buf = bufnr })
     or vim.tbl_contains(opt.exclude, function(v)
@@ -77,18 +81,23 @@ local function on_line(_, _, bufnr, row)
   end
   local line_is_empty = #lines[1] == 0
   local shiftw = vim.fn.shiftwidth()
+  local top_row, bot_row
   if indent == 0 and line_is_empty then
-    local top_row = find_row(bufnr, row, indent, UP, true)
-    local bot_row = find_row(bufnr, row, indent, DOWN, true)
+    top_row = find_row(bufnr, row, indent, UP, true)
+    bot_row = find_row(bufnr, row, indent, DOWN, true)
     local top_indent = top_row and indent_fn(top_row + 1) or 0
     local bot_indent = bot_row and indent_fn(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
-
+  local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, bufnr, shiftw)
   for i = 1, indent - 1, shiftw do
     local col = i - 1
     local level = math.floor(col / shiftw) + 1
-    local hi_name = ('IndentLine%d%d'):format(row + 1, level)
+    local higroup = 'IndentLine'
+    if row > reg_srow and row < reg_erow and level == cur_inlevel then
+      higroup = 'IndentLineCurrent'
+    end
+    local hi_name = (higroup .. '%d%d'):format(row + 1, level)
     if col_in_screen(col) and non_or_space(row, col) then
       opt.config.virt_text[1][2] = hi_name
       if line_is_empty and col > 0 then
@@ -96,37 +105,12 @@ local function on_line(_, _, bufnr, row)
       end
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
-      api.nvim_set_hl(ns, hi_name, { link = 'IndentLine', default = true })
+      api.nvim_set_hl(ns, hi_name, {
+        link = higroup,
+        default = true,
+        force = true,
+      })
     end
-  end
-
-  if opt.current and not event_created({ 'CursorMoved', 'CursorHoldI', 'InsertEnter' }, bufnr) then
-    au({ 'CursorMoved', 'CursorHoldI', 'InsertEnter' }, {
-      group = g,
-      buffer = bufnr,
-      callback = function(data)
-        local cur_hi = 'IndentLineCurrent'
-        local line, _ = unpack(api.nvim_win_get_cursor(0))
-        local curindent = indent_fn(line)
-        local srow = find_row(data.buf, line - 1, curindent, UP, false) or 0
-        local erow = find_row(data.buf, line - 1, curindent, DOWN, false) or 0
-        for k, v in pairs(api.nvim_get_hl(ns, {}) or {}) do
-          if v.link and v.link == cur_hi then
-            api.nvim_set_hl(ns, k, { link = 'IndentLine', force = true })
-          end
-        end
-        if erow < 1 then
-          return
-        end
-        -- only render visible part of screen
-        srow = math.max(vim.fn.line('w0') - 2, srow)
-        erow = math.min(vim.fn.line('w$'), erow)
-        local level = math.floor(curindent / shiftw)
-        for i = srow + 2, erow, 1 do
-          api.nvim_set_hl(ns, ('IndentLine%d%d'):format(i, level), { link = cur_hi, force = true })
-        end
-      end,
-    })
   end
 end
 
@@ -140,6 +124,6 @@ return {
       conf.exclude or {}
     )
     opt.config.virt_text = { { conf.char or '│' } }
-    set_decoration_provider(ns, { on_win = on_win, on_line = on_line })
+    set_provider(ns, { on_win = on_win, on_line = on_line })
   end,
 }

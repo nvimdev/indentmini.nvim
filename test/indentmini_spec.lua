@@ -36,13 +36,13 @@ end
 local function count_current_hl()
   local cur_hi = 'IndentLineCurrent'
   local ns = get_indent_ns()
-  local t = {}
-  for k, v in pairs(nvim_get_hl(ns) or {}) do
-    if v.link and v.link == cur_hi then
-      t[#t + 1] = k:match('IndentLine(%d+)3')
+  local count = 0
+  for k, _ in pairs(nvim_get_hl(ns) or {}) do
+    if k:find('Current') then
+      count = count + 1
     end
   end
-  return #t
+  return count
 end
 
 local function screen(lines)
