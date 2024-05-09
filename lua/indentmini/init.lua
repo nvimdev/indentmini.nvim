@@ -120,7 +120,7 @@ local function on_line(_, _, bufnr, row)
         end
         -- only render visible part of screen
         srow = math.max(vim.fn.line('w0') - 2, srow)
-        erow = math.min(vim.fn.line('w$') - 1, erow)
+        erow = math.min(vim.fn.line('w$'), erow)
         local level = math.floor(curindent / shiftw)
         for i = srow + 2, erow, 1 do
           api.nvim_set_hl(ns, ('IndentLine%d%d'):format(i, level), { link = cur_hi, force = true })
