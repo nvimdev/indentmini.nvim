@@ -60,7 +60,6 @@ local function screen(lines)
   vim.rpcrequest(channel, 'nvim_set_option_value', 'tabstop', 2, { scope = 'global' })
   vim.rpcrequest(channel, 'nvim_set_option_value', 'softtabstop', 2, { scope = 'global' })
 
-  vim.rpcrequest(channel, 'nvim_exec_autocmds', 'BufEnter', { group = 'IndentMini' })
   vim.rpcrequest(channel, 'nvim_set_option_value', 'shiftwidth', 2, { buf = 0 })
   vim.rpcrequest(channel, 'nvim_set_option_value', 'expandtab', true, { buf = 0 })
 
