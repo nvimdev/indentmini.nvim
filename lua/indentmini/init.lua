@@ -1,8 +1,6 @@
-local api = vim.api
+local api, UP, DOWN, INVALID, indent_fn = vim.api, -1, 1, -1, vim.fn.indent
 local buf_set_extmark, set_provider = api.nvim_buf_set_extmark, api.nvim_set_decoration_provider
 local ns = api.nvim_create_namespace('IndentLine')
-local indent_fn = vim.fn.indent
-local UP, DOWN, INVALID = -1, 1, -1
 local opt = {
   config = {
     virt_text_pos = 'overlay',
@@ -22,20 +20,13 @@ local function non_or_space(row, col)
   return text and (#text == 0 or text == ' ') or false
 end
 
-local function on_win(_, winid, bufnr, _)
-  if bufnr ~= vim.api.nvim_get_current_buf() then
-    return false
-  end
-  api.nvim_win_set_hl_ns(winid, ns)
-end
-
 local function find_row(bufnr, row, curindent, direction, render)
   local target_row = row + direction
   local count = api.nvim_buf_line_count(bufnr)
   while true do
     local ok, lines = pcall(api.nvim_buf_get_text, bufnr, target_row, 0, target_row, -1, {})
     if not ok then
-      return
+      return INVALID
     end
     local non_empty = #lines[1] > 0
     local target_indent = indent_fn(target_row + 1)
@@ -46,9 +37,10 @@ local function find_row(bufnr, row, curindent, direction, render)
     end
     target_row = target_row + direction
     if target_row < 0 or target_row > count - 1 then
-      return
+      return INVALID
     end
   end
+  return INVALID
 end
 
 ---@return integer top_row
@@ -60,8 +52,8 @@ local function current_line_range(winid, bufnr, shiftw)
   if indent == 0 then
     return INVALID, INVALID, INVALID
   end
-  local top_row = find_row(bufnr, row, indent, UP, false) or INVALID
-  local bot_row = find_row(bufnr, row, indent, DOWN, false) or INVALID
+  local top_row = find_row(bufnr, row, indent, UP, false)
+  local bot_row = find_row(bufnr, row, indent, DOWN, false)
   return top_row, bot_row, math.floor(indent / shiftw)
 end
 
@@ -85,8 +77,8 @@ local function on_line(_, winid, bufnr, row)
   if indent == 0 and line_is_empty then
     top_row = find_row(bufnr, row, indent, UP, true)
     bot_row = find_row(bufnr, row, indent, DOWN, true)
-    local top_indent = top_row and indent_fn(top_row + 1) or 0
-    local bot_indent = bot_row and indent_fn(bot_row + 1) or 0
+    local top_indent = top_row and indent_fn(top_row + 1)
+    local bot_indent = bot_row and indent_fn(bot_row + 1)
     indent = math.max(top_indent, bot_indent)
   end
   local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, bufnr, shiftw)
@@ -112,6 +104,13 @@ local function on_line(_, winid, bufnr, row)
       })
     end
   end
+end
+
+local function on_win(_, winid, bufnr, _)
+  if bufnr ~= api.nvim_get_current_buf() then
+    return false
+  end
+  api.nvim_win_set_hl_ns(winid, ns)
 end
 
 return {
