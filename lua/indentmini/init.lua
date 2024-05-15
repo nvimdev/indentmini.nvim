@@ -9,12 +9,10 @@ local opt = {
   },
 }
 
----check column in screen
 local function col_in_screen(col)
   return col >= vim.fn.winsaveview().leftcol
 end
 
----check text in current column is space
 local function non_or_space(row, col)
   local text = api.nvim_buf_get_text(0, row, col, row, col + 1, {})[1]
   return text and (#text == 0 or text == ' ') or false
@@ -43,9 +41,6 @@ local function find_row(bufnr, row, curindent, direction, render)
   return INVALID
 end
 
----@return integer top_row
----@return integer bot_row
----@return integer cur_inlevel
 local function current_line_range(winid, bufnr, shiftw)
   local row = api.nvim_win_get_cursor(winid)[1] - 1
   local indent = indent_fn(row + 1)
@@ -66,19 +61,19 @@ local function on_line(_, winid, bufnr, row)
   then
     return false
   end
-  local indent = indent_fn(row + 1)
   local ok, lines = pcall(api.nvim_buf_get_text, bufnr, row, 0, row, -1, {})
   if not ok then
     return
   end
+  local indent = indent_fn(row + 1)
   local line_is_empty = #lines[1] == 0
   local shiftw = vim.fn.shiftwidth()
   local top_row, bot_row
   if indent == 0 and line_is_empty then
     top_row = find_row(bufnr, row, indent, UP, true)
     bot_row = find_row(bufnr, row, indent, DOWN, true)
-    local top_indent = top_row and indent_fn(top_row + 1)
-    local bot_indent = bot_row and indent_fn(bot_row + 1)
+    local top_indent = top_row >= 0 and indent_fn(top_row + 1) or 0
+    local bot_indent = bot_row >= 0 and indent_fn(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
   local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, bufnr, shiftw)
@@ -97,11 +92,7 @@ local function on_line(_, winid, bufnr, row)
       end
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
-      api.nvim_set_hl(ns, hi_name, {
-        link = higroup,
-        default = true,
-        force = true,
-      })
+      api.nvim_set_hl(ns, hi_name, { link = higroup, default = true, force = true })
     end
   end
 end
