@@ -53,8 +53,11 @@ local function current_line_range(winid, bufnr, shiftw)
 end
 
 local function on_line(_, winid, bufnr, row)
+  local screen_first_row = vim.fn.line('w0') - 1
+  local screen_bot_row = vim.fn.line('w$') - 1
   if
     not api.nvim_get_option_value('expandtab', { buf = bufnr })
+    or (row < screen_first_row or row > screen_bot_row)
     or vim.iter(opt.exclude):find(function(v)
       return v == vim.bo[bufnr].ft or v == vim.bo[bufnr].buftype
     end)
