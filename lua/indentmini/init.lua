@@ -55,9 +55,9 @@ end
 local function on_line(_, winid, bufnr, row)
   if
     not api.nvim_get_option_value('expandtab', { buf = bufnr })
-    or vim.tbl_contains(opt.exclude, function(v)
+    or vim.iter(opt.exclude):find(function(v)
       return v == vim.bo[bufnr].ft or v == vim.bo[bufnr].buftype
-    end, { predicate = true })
+    end)
   then
     return false
   end
