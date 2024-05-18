@@ -76,6 +76,7 @@ local function on_line(_, winid, bufnr, row)
     local bot_indent = bot_row >= 0 and indent_fn(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
+  --TODO(glepnir): should remove this or before find_row ? duplicated
   local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, bufnr, shiftw)
   for i = 1, indent - 1, shiftw do
     local col = i - 1
@@ -107,7 +108,6 @@ end
 return {
   setup = function(conf)
     conf = conf or {}
-    opt.current = conf.current or true
     opt.exclude = vim.tbl_extend(
       'force',
       { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal' },
