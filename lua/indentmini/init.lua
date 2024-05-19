@@ -9,6 +9,7 @@ local opt = {
     ephemeral = true,
   },
 }
+local cache = {}
 
 ffi.cdef([[
   typedef struct {} Error;
@@ -86,7 +87,7 @@ local function current_line_range(winid, bufnr, shiftw)
   return top_row, bot_row, math.floor(indent / shiftw)
 end
 
-local function on_line(_, winid, bufnr, row)
+local function on_line(_, _, bufnr, row)
   local line = get_line_data(bufnr, row + 1)
   if not line then
     return
@@ -102,13 +103,11 @@ local function on_line(_, winid, bufnr, row)
     local bot_indent = bot_row >= 0 and get_indent(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
-  --TODO(glepnir): should remove this or before find_row ? duplicated
-  local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, bufnr, shiftw)
   for i = 1, indent - 1, shiftw do
     local col = i - 1
     local level = math.floor(col / shiftw) + 1
     local higroup = 'IndentLine'
-    if row > reg_srow and row < reg_erow and level == cur_inlevel then
+    if row > cache.reg_srow and row < cache.reg_erow and level == cache.cur_inlevel then
       higroup = 'IndentLineCurrent'
     end
     if col_in_screen(col) and non_or_space(row, col) then
@@ -133,6 +132,8 @@ local function on_win(_, winid, bufnr, _)
   then
     return false
   end
+  local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, bufnr, vim.fn.shiftwidth())
+  cache = { reg_srow = reg_srow, reg_erow = reg_erow, cur_inlevel = cur_inlevel }
   api.nvim_win_set_hl_ns(winid, ns)
 end
 
