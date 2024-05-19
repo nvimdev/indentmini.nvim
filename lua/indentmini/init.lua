@@ -53,19 +53,34 @@ local function non_or_space(line, col)
   return text and (#text == 0 or text == ' ') or false
 end
 
+local function get_line_info(bufnr, row)
+  if cache.lines[row] == nil then
+    local line = get_line_data(bufnr, row + 1)
+    if not line == nil then
+      cache.lines[row] = { nil, INVALID }
+    elseif #line == 0 then
+      cache.lines[row] = { line, 0 }
+    else
+      cache.lines[row] = { line, get_indent(row + 1) }
+    end
+  end
+
+  return unpack(cache.lines[row])
+end
+
 local function find_row(bufnr, row, curindent, direction, render)
   local target_row = row + direction
   while true do
-    local line = get_line_data(bufnr, target_row + 1)
+    local line, target_indent = get_line_info(bufnr, target_row)
     if not line then
       return INVALID
     end
-    local non_empty = #line > 0
-    local target_indent = get_indent(target_row + 1)
-    if target_indent == 0 and non_empty and render then
-      break
-    elseif non_empty and (render and target_indent > curindent or target_indent < curindent) then
-      return target_row
+    if #line > 0 then
+      if target_indent == 0 and render then
+        break
+      elseif render and target_indent > curindent or target_indent < curindent then
+        return target_row
+      end
     end
     target_row = target_row + direction
     if target_row < 0 or target_row > cache.linecount - 1 then
@@ -76,7 +91,7 @@ local function find_row(bufnr, row, curindent, direction, render)
 end
 
 local function current_line_range(bufnr, shiftw, row)
-  local indent = get_indent(row + 1)
+  local _, indent = get_line_info(bufnr, row)
   if indent == 0 then
     return INVALID, INVALID, INVALID
   end
@@ -86,11 +101,10 @@ local function current_line_range(bufnr, shiftw, row)
 end
 
 local function on_line(_, _, bufnr, row)
-  local line = get_line_data(bufnr, row + 1)
+  local line, indent = get_line_info(bufnr, row)
   if not line then
     return
   end
-  local indent = get_indent(row + 1)
   local line_is_empty = #line == 0
   local top_row, bot_row
   if indent == 0 and line_is_empty then
