@@ -90,6 +90,7 @@ local function on_line(_, winid, bufnr, row)
       if line_is_empty and col > 0 then
         opt.config.virt_text_win_col = i - 1
       end
+      --TODO(glepnir): store id with changedtick then compare for performance
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
     end
