@@ -12,7 +12,7 @@ end
 local function nvim_instance()
   local address = vim.fn.tempname()
   job_id = vim.fn.jobstart({ 'nvim', '--clean', '-n', '--listen', address }, { pty = true })
-  vim.loop.sleep(200)
+  vim.uv.sleep(200)
   return vim.fn.sockconnect('pipe', address, { rpc = true })
 end
 
@@ -38,7 +38,7 @@ local function count_current_hl()
   local ns = get_indent_ns()
   local count = 0
   for k, _ in pairs(nvim_get_hl(ns) or {}) do
-    if k:find('Current') then
+    if k == cur_hi then
       count = count + 1
     end
   end
@@ -218,7 +218,6 @@ describe('indent mini', function()
     }
     screen(lines)
     nvim_set_cursor(6, 8)
-    local ns = get_indent_ns()
     assert.same(7, count_current_hl())
     clean()
   end)

@@ -85,15 +85,13 @@ local function on_line(_, winid, bufnr, row)
     if row > reg_srow and row < reg_erow and level == cur_inlevel then
       higroup = 'IndentLineCurrent'
     end
-    local hi_name = (higroup .. '%d%d'):format(row + 1, level)
     if col_in_screen(col) and non_or_space(row, col) then
-      opt.config.virt_text[1][2] = hi_name
+      opt.config.virt_text[1][2] = higroup
       if line_is_empty and col > 0 then
         opt.config.virt_text_win_col = i - 1
       end
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
-      api.nvim_set_hl(ns, hi_name, { link = higroup, default = true, force = true })
     end
   end
 end
