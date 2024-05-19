@@ -1,6 +1,7 @@
-local api, UP, DOWN, INVALID, indent_fn = vim.api, -1, 1, -1, vim.fn.indent
+local api, UP, DOWN, INVALID = vim.api, -1, 1, -1
 local buf_set_extmark, set_provider = api.nvim_buf_set_extmark, api.nvim_set_decoration_provider
 local ns = api.nvim_create_namespace('IndentLine')
+local ffi = require('ffi')
 local opt = {
   config = {
     virt_text_pos = 'overlay',
@@ -8,6 +9,39 @@ local opt = {
     ephemeral = true,
   },
 }
+
+ffi.cdef([[
+  typedef struct {} Error;
+  typedef int colnr_T;
+  typedef struct window_S win_T;
+  typedef struct file_buffer buf_T;
+  buf_T *find_buffer_by_handle(int buffer, Error *err);
+  win_T *find_window_by_handle(int window, Error *err);
+  int get_sw_value(buf_T *buf);
+  typedef int32_t linenr_T;
+  int get_indent_lnum(linenr_T lnum);
+  char *ml_get_buf(buf_T *buf, linenr_T lnum, bool will_change);
+]])
+
+local function get_line_data(bufnr, lnum)
+  local err = ffi.new('Error')
+  local handle = ffi.C.find_buffer_by_handle(bufnr, err)
+  if lnum > api.nvim_buf_line_count(bufnr) then
+    return
+  end
+  local data = ffi.C.ml_get_buf(handle, lnum, false)
+  return ffi.string(data)
+end
+
+local function get_sw_value(bufnr)
+  local err = ffi.new('Error')
+  local handle = ffi.C.find_buffer_by_handle(bufnr, err)
+  return ffi.C.get_sw_value(handle)
+end
+
+local function get_indent(lnum)
+  return ffi.C.get_indent_lnum(lnum)
+end
 
 local function col_in_screen(col)
   return col >= vim.fn.winsaveview().leftcol
@@ -22,12 +56,12 @@ local function find_row(bufnr, row, curindent, direction, render)
   local target_row = row + direction
   local count = api.nvim_buf_line_count(bufnr)
   while true do
-    local ok, lines = pcall(api.nvim_buf_get_text, bufnr, target_row, 0, target_row, -1, {})
-    if not ok then
+    local line = get_line_data(bufnr, target_row + 1)
+    if not line then
       return INVALID
     end
-    local non_empty = #lines[1] > 0
-    local target_indent = indent_fn(target_row + 1)
+    local non_empty = #line > 0
+    local target_indent = get_indent(target_row + 1)
     if target_indent == 0 and non_empty and render then
       break
     elseif non_empty and (render and target_indent > curindent or target_indent < curindent) then
@@ -43,7 +77,7 @@ end
 
 local function current_line_range(winid, bufnr, shiftw)
   local row = api.nvim_win_get_cursor(winid)[1] - 1
-  local indent = indent_fn(row + 1)
+  local indent = get_indent(row + 1)
   if indent == 0 then
     return INVALID, INVALID, INVALID
   end
@@ -53,27 +87,19 @@ local function current_line_range(winid, bufnr, shiftw)
 end
 
 local function on_line(_, winid, bufnr, row)
-  if
-    not api.nvim_get_option_value('expandtab', { buf = bufnr })
-    or vim.iter(opt.exclude):find(function(v)
-      return v == vim.bo[bufnr].ft or v == vim.bo[bufnr].buftype
-    end)
-  then
-    return false
-  end
-  local ok, lines = pcall(api.nvim_buf_get_text, bufnr, row, 0, row, -1, {})
-  if not ok then
+  local line = get_line_data(bufnr, row + 1)
+  if not line then
     return
   end
-  local indent = indent_fn(row + 1)
-  local line_is_empty = #lines[1] == 0
-  local shiftw = vim.fn.shiftwidth()
+  local indent = get_indent(row + 1)
+  local line_is_empty = #line == 0
+  local shiftw = get_sw_value(bufnr)
   local top_row, bot_row
   if indent == 0 and line_is_empty then
     top_row = find_row(bufnr, row, indent, UP, true)
     bot_row = find_row(bufnr, row, indent, DOWN, true)
-    local top_indent = top_row >= 0 and indent_fn(top_row + 1) or 0
-    local bot_indent = bot_row >= 0 and indent_fn(bot_row + 1) or 0
+    local top_indent = top_row >= 0 and get_indent(top_row + 1) or 0
+    local bot_indent = bot_row >= 0 and get_indent(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
   --TODO(glepnir): should remove this or before find_row ? duplicated
@@ -98,7 +124,13 @@ local function on_line(_, winid, bufnr, row)
 end
 
 local function on_win(_, winid, bufnr, _)
-  if bufnr ~= api.nvim_get_current_buf() then
+  if
+    bufnr ~= api.nvim_get_current_buf()
+    or not api.nvim_get_option_value('expandtab', { buf = bufnr })
+    or vim.iter(opt.exclude):find(function(v)
+      return v == vim.bo[bufnr].ft or v == vim.bo[bufnr].buftype
+    end)
+  then
     return false
   end
   api.nvim_win_set_hl_ns(winid, ns)
@@ -109,7 +141,7 @@ return {
     conf = conf or {}
     opt.exclude = vim.tbl_extend(
       'force',
-      { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal' },
+      { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal', 'prompt' },
       conf.exclude or {}
     )
     opt.config.virt_text = { { conf.char or '│' } }
