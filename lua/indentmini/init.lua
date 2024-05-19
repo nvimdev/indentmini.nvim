@@ -45,7 +45,7 @@ local function get_indent(lnum)
 end
 
 local function col_in_screen(col)
-  return col >= vim.fn.winsaveview().leftcol
+  return col >= cache.leftcol
 end
 
 local function non_or_space(line, col)
@@ -55,7 +55,6 @@ end
 
 local function find_row(bufnr, row, curindent, direction, render)
   local target_row = row + direction
-  local count = api.nvim_buf_line_count(bufnr)
   while true do
     local line = get_line_data(bufnr, target_row + 1)
     if not line then
@@ -69,15 +68,14 @@ local function find_row(bufnr, row, curindent, direction, render)
       return target_row
     end
     target_row = target_row + direction
-    if target_row < 0 or target_row > count - 1 then
+    if target_row < 0 or target_row > cache.linecount - 1 then
       return INVALID
     end
   end
   return INVALID
 end
 
-local function current_line_range(winid, bufnr, shiftw)
-  local row = api.nvim_win_get_cursor(winid)[1] - 1
+local function current_line_range(bufnr, shiftw, row)
   local indent = get_indent(row + 1)
   if indent == 0 then
     return INVALID, INVALID, INVALID
@@ -94,7 +92,6 @@ local function on_line(_, _, bufnr, row)
   end
   local indent = get_indent(row + 1)
   local line_is_empty = #line == 0
-  local shiftw = get_sw_value(bufnr)
   local top_row, bot_row
   if indent == 0 and line_is_empty then
     top_row = find_row(bufnr, row, indent, UP, true)
@@ -103,9 +100,9 @@ local function on_line(_, _, bufnr, row)
     local bot_indent = bot_row >= 0 and get_indent(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
-  for i = 1, indent - 1, shiftw do
+  for i = 1, indent - 1, cache.shiftw do
     local col = i - 1
-    local level = math.floor(col / shiftw) + 1
+    local level = math.floor(col / cache.shiftw) + 1
     local higroup = 'IndentLine'
     if row > cache.reg_srow and row < cache.reg_erow and level == cache.cur_inlevel then
       higroup = 'IndentLineCurrent'
@@ -132,8 +129,14 @@ local function on_win(_, winid, bufnr, _)
   then
     return false
   end
-  local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, bufnr, vim.fn.shiftwidth())
-  cache = { reg_srow = reg_srow, reg_erow = reg_erow, cur_inlevel = cur_inlevel }
+  local shiftw = get_sw_value(bufnr)
+  local winview = vim.fn.winsaveview()
+  -- Some of this values are used in current_line_range call
+  cache = { leftcol = winview.leftcol, shiftw = shiftw, lines = {}, linecount = api.nvim_buf_line_count(bufnr) }
+  local reg_srow, reg_erow, cur_inlevel = current_line_range(bufnr, shiftw, winview.lnum - 1)
+  cache.reg_srow = reg_srow
+  cache.reg_erow = reg_erow
+  cache.cur_inlevel = cur_inlevel
   api.nvim_win_set_hl_ns(winid, ns)
 end
 
