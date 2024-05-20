@@ -16,17 +16,18 @@ ffi.cdef([[
   typedef struct window_S win_T;
   typedef struct file_buffer buf_T;
   buf_T *find_buffer_by_handle(int buffer, Error *err);
-  win_T *find_window_by_handle(int window, Error *err);
   int get_sw_value(buf_T *buf);
   typedef int32_t linenr_T;
   int get_indent_lnum(linenr_T lnum);
   char *ml_get_buf(buf_T *buf, linenr_T lnum, bool will_change);
 ]])
 
+local cache = { snapshot = {} }
+
 local function get_line_data(bufnr, lnum)
   local err = ffi.new('Error')
   local handle = ffi.C.find_buffer_by_handle(bufnr, err)
-  if lnum > api.nvim_buf_line_count(bufnr) then
+  if lnum > cache.count then
     return
   end
   local data = ffi.C.ml_get_buf(handle, lnum, false)
@@ -43,10 +44,6 @@ local function get_indent(lnum)
   return ffi.C.get_indent_lnum(lnum)
 end
 
-local function col_in_screen(col)
-  return col >= vim.fn.winsaveview().leftcol
-end
-
 local function non_or_space(row, col)
   local text = api.nvim_buf_get_text(0, row, col, row, col + 1, {})[1]
   return text and (#text == 0 or text == ' ') or false
@@ -54,21 +51,22 @@ end
 
 local function find_row(bufnr, row, curindent, direction, render)
   local target_row = row + direction
-  local count = api.nvim_buf_line_count(bufnr)
+  local snapshot = cache.snapshot
   while true do
     local line = get_line_data(bufnr, target_row + 1)
     if not line then
       return INVALID
     end
     local non_empty = #line > 0
-    local target_indent = get_indent(target_row + 1)
+    local target_indent = snapshot[target_row + 1] or get_indent(target_row + 1)
+    snapshot[target_row + 1] = target_indent
     if target_indent == 0 and non_empty and render then
       break
     elseif non_empty and (render and target_indent > curindent or target_indent < curindent) then
       return target_row
     end
     target_row = target_row + direction
-    if target_row < 0 or target_row > count - 1 then
+    if target_row < 0 or target_row > cache.count - 1 then
       return INVALID
     end
   end
@@ -91,9 +89,8 @@ local function on_line(_, winid, bufnr, row)
   if not line then
     return
   end
-  local indent = get_indent(row + 1)
+  local indent = cache.snapshot[row + 1] or get_indent(row + 1)
   local line_is_empty = #line == 0
-  local shiftw = get_sw_value(bufnr)
   local top_row, bot_row
   if indent == 0 and line_is_empty then
     top_row = find_row(bufnr, row, indent, UP, true)
@@ -103,15 +100,15 @@ local function on_line(_, winid, bufnr, row)
     indent = math.max(top_indent, bot_indent)
   end
   --TODO(glepnir): should remove this or before find_row ? duplicated
-  local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, bufnr, shiftw)
-  for i = 1, indent - 1, shiftw do
+  local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, bufnr, cache.shiftwidth)
+  for i = 1, indent - 1, cache.shiftwidth do
     local col = i - 1
-    local level = math.floor(col / shiftw) + 1
+    local level = math.floor(col / cache.shiftwidth) + 1
     local higroup = 'IndentLine'
     if row > reg_srow and row < reg_erow and level == cur_inlevel then
       higroup = 'IndentLineCurrent'
     end
-    if col_in_screen(col) and non_or_space(row, col) then
+    if col >= cache.leftcol and non_or_space(row, col) then
       opt.config.virt_text[1][2] = higroup
       if line_is_empty and col > 0 then
         opt.config.virt_text_win_col = i - 1
@@ -123,7 +120,7 @@ local function on_line(_, winid, bufnr, row)
   end
 end
 
-local function on_win(_, winid, bufnr, _)
+local function on_win(_, winid, bufnr, topline, botline)
   if
     bufnr ~= api.nvim_get_current_buf()
     or not api.nvim_get_option_value('expandtab', { buf = bufnr })
@@ -134,6 +131,12 @@ local function on_win(_, winid, bufnr, _)
     return false
   end
   api.nvim_win_set_hl_ns(winid, ns)
+  cache.leftcol = vim.fn.winsaveview().leftcol
+  cache.shiftwidth = get_sw_value(bufnr)
+  cache.count = api.nvim_buf_line_count(bufnr)
+  for i = topline, botline do
+    cache.snapshot[i] = get_indent(i)
+  end
 end
 
 return {
