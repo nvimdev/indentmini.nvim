@@ -20,18 +20,19 @@ ffi.cdef([[
   typedef int32_t linenr_T;
   int get_indent_lnum(linenr_T lnum);
   char *ml_get_buf(buf_T *buf, linenr_T lnum, bool will_change);
+  size_t strlen(const char *__s);
 ]])
 
 local cache = { snapshot = {} }
 
-local function get_line_data(bufnr, lnum)
+local function line_is_empty(bufnr, lnum)
   local err = ffi.new('Error')
   local handle = ffi.C.find_buffer_by_handle(bufnr, err)
   if lnum > cache.count then
-    return
+    return nil
   end
   local data = ffi.C.ml_get_buf(handle, lnum, false)
-  return ffi.string(data)
+  return tonumber(ffi.C.strlen(data)) == 0
 end
 
 local function get_sw_value(bufnr)
@@ -53,16 +54,15 @@ local function find_row(bufnr, row, curindent, direction, render)
   local target_row = row + direction
   local snapshot = cache.snapshot
   while true do
-    local line = get_line_data(bufnr, target_row + 1)
-    if not line then
+    local empty = line_is_empty(bufnr, target_row + 1)
+    if empty == nil then
       return INVALID
     end
-    local non_empty = #line > 0
     local target_indent = snapshot[target_row + 1] or get_indent(target_row + 1)
     snapshot[target_row + 1] = target_indent
-    if target_indent == 0 and non_empty and render then
+    if target_indent == 0 and not empty and render then
       break
-    elseif non_empty and (render and target_indent > curindent or target_indent < curindent) then
+    elseif not empty and (render and target_indent > curindent or target_indent < curindent) then
       return target_row
     end
     target_row = target_row + direction
@@ -85,14 +85,13 @@ local function current_line_range(winid, bufnr, shiftw)
 end
 
 local function on_line(_, winid, bufnr, row)
-  local line = get_line_data(bufnr, row + 1)
-  if not line then
+  local is_empty = line_is_empty(bufnr, row + 1)
+  if is_empty == nil then
     return
   end
   local indent = cache.snapshot[row + 1] or get_indent(row + 1)
-  local line_is_empty = #line == 0
   local top_row, bot_row
-  if indent == 0 and line_is_empty then
+  if indent == 0 and is_empty then
     top_row = find_row(bufnr, row, indent, UP, true)
     bot_row = find_row(bufnr, row, indent, DOWN, true)
     local top_indent = top_row >= 0 and get_indent(top_row + 1) or 0
