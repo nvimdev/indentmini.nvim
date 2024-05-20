@@ -59,12 +59,12 @@ local function screen(lines)
   vim.rpcrequest(channel, 'nvim_set_option_value', 'shiftwidth', 2, { scope = 'global' })
   vim.rpcrequest(channel, 'nvim_set_option_value', 'tabstop', 2, { scope = 'global' })
   vim.rpcrequest(channel, 'nvim_set_option_value', 'softtabstop', 2, { scope = 'global' })
-
   vim.rpcrequest(channel, 'nvim_set_option_value', 'shiftwidth', 2, { buf = 0 })
   vim.rpcrequest(channel, 'nvim_set_option_value', 'expandtab', true, { buf = 0 })
 
   vim.rpcrequest(channel, 'nvim_buf_set_lines', 0, 0, -1, false, lines)
-
+  local buf = vim.rpcrequest(channel, 'nvim_get_current_buf')
+  vim.rpcrequest(channel, 'nvim_win_set_buf', 0, buf)
   local screenstring = function(row, col)
     return vim.rpcrequest(channel, 'nvim_exec_lua', 'return vim.fn.screenstring(...)', { row, col })
   end
@@ -86,14 +86,8 @@ local function screen(lines)
   return screen()
 end
 
---find out why test nolong work
+--TODO(glepnir): after use vim.iter on on_win the vusted is hang at test
 describe('indent mini', function()
-  local bufnr
-  before_each(function()
-    bufnr = api.nvim_create_buf(true, true)
-    api.nvim_win_set_buf(0, bufnr)
-  end)
-
   after_each(function ()
     clean()
   end)
@@ -112,7 +106,6 @@ describe('indent mini', function()
   --     '  end',
   --     'end',
   --   }
-  --   local char = '┇'
   --   local screenstr = screen(lines)
   --   -- for _, line in ipairs(screenstr) do
   --   --   print(vim.inspect(line))
