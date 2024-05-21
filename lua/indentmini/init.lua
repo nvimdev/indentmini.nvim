@@ -93,8 +93,8 @@ local function on_line(_, winid, bufnr, row)
   if indent == 0 and is_empty then
     top_row = find_row(row, indent, UP, true)
     bot_row = find_row(row, indent, DOWN, true)
-    local top_indent = top_row >= 0 and get_indent(top_row + 1) or 0
-    local bot_indent = bot_row >= 0 and get_indent(bot_row + 1) or 0
+    local top_indent = top_row >= 0 and find_in_snapshot(top_row + 1) or 0
+    local bot_indent = bot_row >= 0 and find_in_snapshot(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
   --TODO(glepnir): should remove this or before find_row ? duplicated
