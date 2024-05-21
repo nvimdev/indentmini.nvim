@@ -19,6 +19,7 @@ ffi.cdef([[
   int get_sw_value(buf_T *buf);
   typedef int32_t linenr_T;
   int get_indent_lnum(linenr_T lnum);
+  char *ml_get(linenr_T lnum);
   colnr_T ml_get_len(linenr_T lnum);
   size_t strlen(const char *__s);
 ]])
@@ -40,7 +41,8 @@ local function get_indent(lnum)
 end
 
 local function non_or_space(row, col)
-  local text = api.nvim_buf_get_text(0, row, col, row, col + 1, {})[1]
+  local line = ffi.string(ffi.C.ml_get(row + 1))
+  local text = line:sub(col, col)
   return text and (#text == 0 or text == ' ') or false
 end
 
