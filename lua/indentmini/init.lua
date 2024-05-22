@@ -97,7 +97,6 @@ local function on_line(_, winid, bufnr, row)
     local bot_indent = bot_row >= 0 and find_in_snapshot(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
-  --TODO(glepnir): should remove this or before find_row ? duplicated
   local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, cache.shiftwidth)
   for i = 1, indent - 1, cache.shiftwidth do
     local col = i - 1
@@ -117,7 +116,7 @@ local function on_line(_, winid, bufnr, row)
   end
 end
 
-local function on_win(_, winid, bufnr, topline, botline)
+local function on_win(_, winid, bufnr, toprow, botrow)
   if
     bufnr ~= api.nvim_get_current_buf()
     or not api.nvim_get_option_value('expandtab', { buf = bufnr })
@@ -131,8 +130,7 @@ local function on_win(_, winid, bufnr, topline, botline)
   cache.leftcol = vim.fn.winsaveview().leftcol
   cache.shiftwidth = get_sw_value(bufnr)
   cache.count = api.nvim_buf_line_count(bufnr)
-  cache.tick = api.nvim_buf_get_changedtick(bufnr)
-  for i = topline, botline do
+  for i = toprow, botrow do
     cache.snapshot[i + 1] = { get_indent(i + 1), line_is_empty(i + 1) }
   end
 end
