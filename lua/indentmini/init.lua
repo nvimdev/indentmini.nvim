@@ -75,7 +75,7 @@ end
 
 local function current_line_range(winid, shiftw)
   local row = api.nvim_win_get_cursor(winid)[1] - 1
-  local indent = get_indent(row + 1)
+  local indent, _ = find_in_snapshot(row + 1)
   if indent == 0 then
     return INVALID, INVALID, INVALID
   end
