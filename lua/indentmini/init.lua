@@ -84,7 +84,7 @@ local function current_line_range(winid, shiftw)
   return top_row, bot_row, math.floor(indent / shiftw)
 end
 
-local function on_line(_, winid, bufnr, row)
+local function on_line(_, _, bufnr, row)
   local indent, is_empty = find_in_snapshot(row + 1)
   if is_empty == nil then
     return
@@ -97,12 +97,11 @@ local function on_line(_, winid, bufnr, row)
     local bot_indent = bot_row >= 0 and find_in_snapshot(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
-  local reg_srow, reg_erow, cur_inlevel = current_line_range(winid, cache.shiftwidth)
   for i = 1, indent - 1, cache.shiftwidth do
     local col = i - 1
     local level = math.floor(col / cache.shiftwidth) + 1
     local higroup = 'IndentLine'
-    if row > reg_srow and row < reg_erow and level == cur_inlevel then
+    if row > cache.reg_srow and row < cache.reg_erow and level == cache.cur_inlevel then
       higroup = 'IndentLineCurrent'
     end
     if col >= cache.leftcol and non_or_space(row, col) then
@@ -130,6 +129,7 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   cache.leftcol = vim.fn.winsaveview().leftcol
   cache.shiftwidth = get_sw_value(bufnr)
   cache.count = api.nvim_buf_line_count(bufnr)
+  cache.reg_srow, cache.reg_erow, cache.cur_inlevel = current_line_range(winid, cache.shiftwidth)
   for i = toprow, botrow do
     cache.snapshot[i + 1] = { get_indent(i + 1), line_is_empty(i + 1) }
   end
