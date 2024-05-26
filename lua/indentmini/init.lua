@@ -25,11 +25,9 @@ ffi.cdef([[
 ]])
 
 local C = ffi.C
-local ml_get_len = C.ml_get_len
+local ml_get, ml_get_len = C.ml_get, C.ml_get_len
 local find_buffer_by_handle = C.find_buffer_by_handle
-local get_sw_value = C.get_sw_value
-local get_indent_lnum = C.get_indent_lnum
-local ml_get = C.ml_get
+local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
 local cache = { snapshot = {} }
 
 local function line_is_empty(lnum)
@@ -37,13 +35,8 @@ local function line_is_empty(lnum)
 end
 
 local function get_shiftw_value(bufnr)
-  local err = ffi.new('Error')
-  local handle = find_buffer_by_handle(bufnr, err)
+  local handle = find_buffer_by_handle(bufnr, ffi.new('Error'))
   return get_sw_value(handle)
-end
-
-local function get_indent(lnum)
-  return get_indent_lnum(lnum)
 end
 
 local function non_or_space(row, col)
@@ -54,7 +47,7 @@ end
 
 local function find_in_snapshot(lnum)
   if not cache.snapshot[lnum] then
-    cache.snapshot[lnum] = { get_indent(lnum), line_is_empty(lnum) }
+    cache.snapshot[lnum] = { get_indent_lnum(lnum), line_is_empty(lnum) }
   end
   return unpack(cache.snapshot[lnum])
 end
@@ -137,7 +130,7 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   cache.count = api.nvim_buf_line_count(bufnr)
   cache.reg_srow, cache.reg_erow, cache.cur_inlevel = current_line_range(winid, cache.shiftwidth)
   for i = toprow, botrow do
-    cache.snapshot[i + 1] = { get_indent(i + 1), line_is_empty(i + 1) }
+    cache.snapshot[i + 1] = { get_indent_lnum(i + 1), line_is_empty(i + 1) }
   end
 end
 
