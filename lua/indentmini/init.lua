@@ -5,7 +5,7 @@ local ffi = require('ffi')
 local opt = {
   config = {
     virt_text_pos = 'overlay',
-    hl_mode = 'replace',
+    hl_mode = 'combine',
     ephemeral = true,
   },
 }
@@ -103,7 +103,9 @@ local function on_line(_, _, bufnr, row)
     if row > cache.reg_srow and row < cache.reg_erow and level == cache.cur_inlevel then
       higroup = 'IndentLineCurrent'
     end
-    if not vim.o.expandtab then col = level - 1 end
+    if not vim.o.expandtab then
+      col = level - 1
+    end
     if col >= cache.leftcol and non_or_space(row, col) then
       opt.config.virt_text[1][2] = higroup
       if is_empty and col > 0 then
