@@ -5,7 +5,7 @@ local ffi = require('ffi')
 local opt = {
   config = {
     virt_text_pos = 'overlay',
-    hl_mode = 'combine',
+    hl_mode = 'replace',
     ephemeral = true,
   },
 }
@@ -42,7 +42,7 @@ end
 local function non_or_space(row, col)
   local line = ffi.string(ml_get(row + 1))
   local text = line:sub(col, col)
-  return text and (#text == 0 or text == ' ') or false
+  return text and (#text == 0 or text == ' ' or text == '	') or false
 end
 
 local function find_in_snapshot(lnum)
@@ -103,6 +103,7 @@ local function on_line(_, _, bufnr, row)
     if row > cache.reg_srow and row < cache.reg_erow and level == cache.cur_inlevel then
       higroup = 'IndentLineCurrent'
     end
+    if not vim.o.expandtab then col = level - 1 end
     if col >= cache.leftcol and non_or_space(row, col) then
       opt.config.virt_text[1][2] = higroup
       if is_empty and col > 0 then
@@ -117,7 +118,6 @@ end
 local function on_win(_, winid, bufnr, toprow, botrow)
   if
     bufnr ~= api.nvim_get_current_buf()
-    or not api.nvim_get_option_value('expandtab', { buf = bufnr })
     or vim.iter(opt.exclude):find(function(v)
       return v == vim.bo[bufnr].ft or v == vim.bo[bufnr].buftype
     end)
