@@ -129,6 +129,10 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   api.nvim_win_set_hl_ns(winid, ns)
   cache.leftcol = vim.fn.winsaveview().leftcol
   cache.shiftwidth = get_shiftw_value(bufnr)
+  --TODO(glepnir): find a way to handle correct with modeline..
+  if cache.shiftwidth ~= vim.bo[bufnr].tabstop then
+    return false
+  end
   cache.count = api.nvim_buf_line_count(bufnr)
   cache.reg_srow, cache.reg_erow, cache.cur_inlevel = current_line_range(winid, cache.shiftwidth)
   for i = toprow, botrow do
