@@ -22,10 +22,11 @@ ffi.cdef([[
   char *ml_get(linenr_T lnum);
   colnr_T ml_get_len(linenr_T lnum);
   size_t strlen(const char *__s);
+  int tabstop_first(colnr_T *ts);
 ]])
 
 local C = ffi.C
-local ml_get, ml_get_len = C.ml_get, C.ml_get_len
+local ml_get, ml_get_len, tabstop_first = C.ml_get, C.ml_get_len, C.tabstop_first
 local find_buffer_by_handle = C.find_buffer_by_handle
 local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
 local cache = { snapshot = {} }
@@ -72,7 +73,7 @@ local function find_row(row, curindent, direction, render)
   return INVALID
 end
 
-local function current_line_range(winid, shiftw)
+local function current_line_range(winid, step)
   local row = api.nvim_win_get_cursor(winid)[1] - 1
   local indent, _ = find_in_snapshot(row + 1)
   if indent == 0 then
@@ -80,7 +81,7 @@ local function current_line_range(winid, shiftw)
   end
   local top_row = find_row(row, indent, UP, false)
   local bot_row = find_row(row, indent, DOWN, false)
-  return top_row, bot_row, math.floor(indent / shiftw)
+  return top_row, bot_row, math.floor(indent / step)
 end
 
 local function on_line(_, _, bufnr, row)
@@ -96,9 +97,9 @@ local function on_line(_, _, bufnr, row)
     local bot_indent = bot_row >= 0 and find_in_snapshot(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
-  for i = 1, indent - 1, cache.shiftwidth do
+  for i = 1, indent - 1, cache.step do
     local col = i - 1
-    local level = math.floor(col / cache.shiftwidth) + 1
+    local level = math.floor(col / cache.step) + 1
     local higroup = 'IndentLine'
     if row > cache.reg_srow and row < cache.reg_erow and level == cache.cur_inlevel then
       higroup = 'IndentLineCurrent'
@@ -128,9 +129,9 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   end
   api.nvim_win_set_hl_ns(winid, ns)
   cache.leftcol = vim.fn.winsaveview().leftcol
-  cache.shiftwidth = get_shiftw_value(bufnr)
+  cache.step = vim.o.expandtab and get_shiftw_value(bufnr) or tabstop_first(nil)
   cache.count = api.nvim_buf_line_count(bufnr)
-  cache.reg_srow, cache.reg_erow, cache.cur_inlevel = current_line_range(winid, cache.shiftwidth)
+  cache.reg_srow, cache.reg_erow, cache.cur_inlevel = current_line_range(winid, cache.step)
   for i = toprow, botrow do
     cache.snapshot[i + 1] = { get_indent_lnum(i + 1), line_is_empty(i + 1) }
   end
