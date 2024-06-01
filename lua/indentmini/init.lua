@@ -22,11 +22,10 @@ ffi.cdef([[
   char *ml_get(linenr_T lnum);
   colnr_T ml_get_len(linenr_T lnum);
   size_t strlen(const char *__s);
-  int tabstop_first(colnr_T *ts);
 ]])
 
 local C = ffi.C
-local ml_get, ml_get_len, tabstop_first = C.ml_get, C.ml_get_len, C.tabstop_first
+local ml_get, ml_get_len = C.ml_get, C.ml_get_len
 local find_buffer_by_handle = C.find_buffer_by_handle
 local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
 local cache = { snapshot = {} }
@@ -110,7 +109,7 @@ local function on_line(_, _, bufnr, row)
     if col >= cache.leftcol and non_or_space(row, col + 1) then
       opt.config.virt_text[1][2] = higroup
       if is_empty and col > 0 then
-        opt.config.virt_text_win_col = col
+        opt.config.virt_text_win_col = i - 1
       end
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
@@ -129,7 +128,7 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   end
   api.nvim_win_set_hl_ns(winid, ns)
   cache.leftcol = vim.fn.winsaveview().leftcol
-  cache.step = vim.o.expandtab and get_shiftw_value(bufnr) or tabstop_first(nil)
+  cache.step = vim.o.expandtab and get_shiftw_value(bufnr) or vim.bo[bufnr].tabstop
   cache.count = api.nvim_buf_line_count(bufnr)
   cache.reg_srow, cache.reg_erow, cache.cur_inlevel = current_line_range(winid, cache.step)
   for i = toprow, botrow do
