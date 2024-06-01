@@ -139,11 +139,8 @@ end
 return {
   setup = function(conf)
     conf = conf or {}
-    opt.exclude = vim.tbl_extend(
-      'force',
-      { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal', 'prompt' },
-      conf.exclude or {}
-    )
+    opt.exclude = { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal', 'prompt' }
+    vim.list_extend(opt.exclude, conf.exclude or {})
     opt.config.virt_text = { { conf.char or '│' } }
     set_provider(ns, { on_win = on_win, on_line = on_line })
   end,
