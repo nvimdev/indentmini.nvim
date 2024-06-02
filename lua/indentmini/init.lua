@@ -109,7 +109,7 @@ local function on_line(_, _, bufnr, row)
     if col >= cache.leftcol and non_or_space(row, col + 1) then
       opt.config.virt_text[1][2] = higroup
       if is_empty and col > 0 then
-        opt.config.virt_text_win_col = i - 1
+        opt.config.virt_text_win_col = i - 1 - cache.leftcol
       end
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
