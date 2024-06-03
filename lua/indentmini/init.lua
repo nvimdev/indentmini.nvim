@@ -46,9 +46,7 @@ local function non_or_space(row, col)
 end
 
 local function find_in_snapshot(lnum)
-  if not cache.snapshot[lnum] then
-    cache.snapshot[lnum] = { get_indent_lnum(lnum), line_is_empty(lnum) }
-  end
+  cache.snapshot[lnum] = cache.snapshot[lnum] or { get_indent_lnum(lnum), line_is_empty(lnum) }
   return unpack(cache.snapshot[lnum])
 end
 
