@@ -1,9 +1,7 @@
 # indentmini.nvim
 
-**Minimal** less than ~100 lines and blazing fastest indentline plugin.
-**Performance** still fast on files with tens of thousands of lines.
-**NOTE:** it only works on current buffer that's mean you can't see any indent char
-on non current buffer.
+An indentation plugin born for the pursuit of **minimal**(~120 lines), **speed**(blazing fastest on files with tens of thousands of lines) and **stability**.
+It renders in the neovim screen redraw circle and will never make your neovim slow.
 
 ![indentmini](https://github.com/nvimdev/indentmini.nvim/assets/41671631/99fb6dd4-8e61-412f-aa4c-c83ee7ce3206)
 
