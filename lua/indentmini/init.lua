@@ -39,20 +39,10 @@ local function get_shiftw_value(bufnr)
   return get_sw_value(handle)
 end
 
-local function tab_at_col(line, col, tabstop)
-  local visual_col = 0
-  for i = 1, #line do
-    local char = line:sub(i, i)
-    if char == '\t' then
-      visual_col = visual_col + (tabstop - (visual_col % tabstop))
-    else
-      visual_col = visual_col + 1
-    end
-    if visual_col >= col then
-      return char == '\t'
-    end
-  end
-  return false
+local function non_or_space(row, col)
+  local line = ffi.string(ml_get(row + 1))
+  local text = line:sub(col, col)
+  return text and (#text == 0 or text == ' ' or text == '	') or false
 end
 
 local function find_in_snapshot(lnum)
@@ -104,8 +94,6 @@ local function on_line(_, _, bufnr, row)
     local bot_indent = bot_row >= 0 and find_in_snapshot(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
-  local line = ffi.string(ml_get(row + 1))
-  local tabstop = vim.bo[bufnr].tabstop
   for i = 1, indent - 1, cache.step do
     local col = i - 1
     local level = math.floor(col / cache.step) + 1
@@ -113,10 +101,10 @@ local function on_line(_, _, bufnr, row)
     if row > cache.reg_srow and row < cache.reg_erow and level == cache.cur_inlevel then
       higroup = 'IndentLineCurrent'
     end
-    if not vim.o.expandtab or tab_at_col(line, col + 1, tabstop) then
+    if not vim.o.expandtab then
       col = level - 1
     end
-    if col >= cache.leftcol then
+    if col >= cache.leftcol and non_or_space(row, col + 1) then
       opt.config.virt_text[1][2] = higroup
       if is_empty and col > 0 then
         opt.config.virt_text_win_col = i - 1 - cache.leftcol
