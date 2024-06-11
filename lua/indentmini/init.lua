@@ -39,10 +39,9 @@ local function get_shiftw_value(bufnr)
   return get_sw_value(handle)
 end
 
-local function non_or_space(row, col)
-  local line = ffi.string(ml_get(row + 1))
+local function non_or_space(line, col)
   local text = line:sub(col, col)
-  return text and (#text == 0 or text == ' ' or text == '	') or false
+  return text and (#text == 0 or text == ' ' or text == '\t') or false
 end
 
 local function find_in_snapshot(lnum)
@@ -94,6 +93,7 @@ local function on_line(_, _, bufnr, row)
     local bot_indent = bot_row >= 0 and find_in_snapshot(bot_row + 1) or 0
     indent = math.max(top_indent, bot_indent)
   end
+  local line = ffi.string(ml_get(row + 1))
   for i = 1, indent - 1, cache.step do
     local col = i - 1
     local level = math.floor(col / cache.step) + 1
@@ -101,10 +101,10 @@ local function on_line(_, _, bufnr, row)
     if row > cache.reg_srow and row < cache.reg_erow and level == cache.cur_inlevel then
       higroup = 'IndentLineCurrent'
     end
-    if not vim.o.expandtab then
+    if not vim.o.expandtab or line:find('^\t') then
       col = level - 1
     end
-    if col >= cache.leftcol and non_or_space(row, col + 1) then
+    if col >= cache.leftcol and non_or_space(line, col + 1) then
       opt.config.virt_text[1][2] = higroup
       if is_empty and col > 0 then
         opt.config.virt_text_win_col = i - 1 - cache.leftcol
