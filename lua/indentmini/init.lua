@@ -97,6 +97,9 @@ local function on_line(_, _, bufnr, row)
   for i = 1, indent - 1, cache.step do
     local col = i - 1
     local level = math.floor(col / cache.step) + 1
+    if level < opt.minlevel then
+      goto continue
+    end
     local higroup = 'IndentLine'
     if row > cache.reg_srow and row < cache.reg_erow and level == cache.cur_inlevel then
       higroup = 'IndentLineCurrent'
@@ -112,6 +115,7 @@ local function on_line(_, _, bufnr, row)
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
     end
+    ::continue::
   end
 end
 
@@ -140,6 +144,7 @@ return {
     opt.exclude = { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal', 'prompt' }
     vim.list_extend(opt.exclude, conf.exclude or {})
     opt.config.virt_text = { { conf.char or '│' } }
+    opt.minlevel = conf.minlevel or 1
     set_provider(ns, { on_win = on_win, on_line = on_line })
   end,
 }
