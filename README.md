@@ -16,6 +16,7 @@ available config values in setup table.
 - char     -- string type default is `│`,
 - exclude  -- table  type add exclude filetype in this table ie `{ 'markdown', 'xxx'}`
 - minlevel -- number the min level that show indent line default is 1
+- only_current -- boolean default is false when true will only highlight current range
 
 ```lua
 config = function()
