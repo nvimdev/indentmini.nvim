@@ -31,87 +31,131 @@ local find_buffer_by_handle = C.find_buffer_by_handle
 local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
 local cache = { snapshot = {} }
 
-local function line_is_empty(lnum)
-  return tonumber(ml_get_len(lnum)) == 0
+--- check text only has space or tab
+--- @param text string
+--- @return boolean true only have space or tab
+local function only_spaces_or_tabs(text)
+  return text:match('^[ \t]*$') ~= nil
 end
 
+--- @param lnum integer
+--- @return boolean true when is true line is empty
+local function line_is_empty(lnum)
+  return tonumber(ml_get_len(lnum)) == 0 or only_spaces_or_tabs(ffi.string(ml_get(lnum)))
+end
+
+--- @param bufnr integer
+--- @return integer the shiftwidth value of bufnr
 local function get_shiftw_value(bufnr)
   local handle = find_buffer_by_handle(bufnr, ffi.new('Error'))
   return get_sw_value(handle)
 end
 
+--- @param line string text of line
+--- @param col integer column
+--- @return boolean
 local function non_or_space(line, col)
   local text = line:sub(col, col)
   return text and (#text == 0 or text == ' ' or text == '\t') or false
 end
 
+--- @param lnum integer
+--- @return integer, boolean
 local function find_in_snapshot(lnum)
-  cache.snapshot[lnum] = cache.snapshot[lnum] or { get_indent_lnum(lnum), line_is_empty(lnum) }
+  cache.snapshot[lnum] = cache.snapshot[lnum]
+    or { get_indent_lnum(lnum), line_is_empty(lnum), ffi.string(ml_get(lnum)) }
   return unpack(cache.snapshot[lnum])
 end
 
-local function find_row(row, curindent, direction, render)
-  local target_row = row + direction
-  while true do
-    if target_row < 0 or target_row > cache.count - 1 then
-      return INVALID
+--- @param row integer
+--- @param direction integer UP or DOWN
+--- @return integer
+--- @return integer
+local function range_in_snapshot(row, direction, fn)
+  while row >= 0 and row < cache.count do
+    local indent, is_empty = find_in_snapshot(row + 1)
+    if fn(indent, is_empty, row) then
+      return indent, row
     end
-    local target_indent, empty = find_in_snapshot(target_row + 1)
-    if empty == nil then
-      return INVALID
-    end
-    if target_indent == 0 and not empty and render then
-      break
-    elseif not empty and (render and target_indent > curindent or target_indent < curindent) then
-      return target_row
-    end
-    target_row = target_row + direction
+    row = row + direction
   end
-  return INVALID
-end
-
-local function current_line_range(row, step)
-  local indent, _ = find_in_snapshot(row + 1)
-  if indent == 0 then
-    return INVALID, INVALID, INVALID
-  end
-  local top_row = find_row(row, indent, UP, false)
-  local bot_row = find_row(row, indent, DOWN, false)
-  return top_row, bot_row, math.floor(indent / step)
+  return INVALID, INVALID
 end
 
 local function out_current_range(row)
-  return only_current and (row < cache.range_srow or row > cache.range_erow)
+  return only_current and cache.range_srow and (row < cache.range_srow or row > cache.range_erow)
+end
+
+local function update_cache_range(currow_indent)
+  local range_fn = function(indent, empty, row)
+    if not empty and indent < currow_indent then
+      if row < cache.currow then
+        cache.range_srow = row
+      else
+        cache.range_erow = row
+      end
+      return true
+    end
+  end
+  range_in_snapshot(cache.currow - 1, UP, range_fn)
+  range_in_snapshot(cache.currow + 1, DOWN, range_fn)
+  cache.cur_inlevel = math.floor(currow_indent / cache.step)
+end
+
+--- @class Context
+--- @field row integer
+--- @field indent_above integer
+--- @field indent_below integer
+---
+--- @param row integer
+--- @return Context
+local function init_context(row)
+  return {
+    row = row,
+    indent_above = INVALID,
+    indent_below = INVALID,
+  }
+end
+
+--- @param ctx Context
+--- @return boolean true the row in code block otherwise not
+local function row_in_code_block(ctx)
+  local function lookup_first_seen(_, empty)
+    return not empty
+  end
+  ctx.indent_above = range_in_snapshot(ctx.row - 1, UP, lookup_first_seen)
+  ctx.indent_below = range_in_snapshot(ctx.row + 1, DOWN, lookup_first_seen)
+  return not (ctx.indent_above == 0 and ctx.indent_below == 0)
 end
 
 local function on_line(_, _, bufnr, row)
-  local indent, is_empty = find_in_snapshot(row + 1)
-  if is_empty == nil or out_current_range(row) then
+  local indent, is_empty, line_text = find_in_snapshot(row + 1)
+  local ctx = init_context(row)
+  if (is_empty and not row_in_code_block(ctx)) or out_current_range(row) then
     return
   end
-  local top_row, bot_row
-  if indent == 0 and is_empty then
-    top_row = find_row(row, indent, UP, true)
-    bot_row = find_row(row, indent, DOWN, true)
-    local top_indent = top_row >= 0 and find_in_snapshot(top_row + 1) or 0
-    local bot_indent = bot_row >= 0 and find_in_snapshot(bot_row + 1) or 0
-    indent = math.max(top_indent, bot_indent)
+
+  if is_empty and indent == 0 then
+    indent = math.max(ctx.indent_above, ctx.indent_below)
+    cache.snapshot[row + 1][1] = indent
   end
-  local line = ffi.string(ml_get(row + 1))
+
   for i = 1, indent - 1, cache.step do
     local col = i - 1
     local level = math.floor(col / cache.step) + 1
     if level < opt.minlevel or (only_current and level ~= cache.cur_inlevel) then
       goto continue
     end
-    local higroup = 'IndentLine'
-    if row > cache.range_srow and row < cache.range_erow then
-      higroup = level == cache.cur_inlevel and 'IndentLineCurrent' or 'IndentLineCurHide'
+    local row_in_curblock = cache.range_srow and (row > cache.range_srow and row < cache.range_erow)
+    local higroup = row_in_curblock and level == cache.cur_inlevel and 'IndentLineCurrent'
+      or 'IndentLine'
+    if only_current and row_in_curblock and level ~= cache.cur_inlevel then
+      higroup = 'IndentLineCurHide'
     end
-    if not vim.o.expandtab or line:find('^\t') then
+    if not vim.o.expandtab or line_text:find('^\t') then
       col = level - 1
     end
-    if col >= cache.leftcol and non_or_space(line, col + 1) then
+    if col >= cache.leftcol and non_or_space(line_text, col + 1) then
       opt.config.virt_text[1][2] = higroup
       if is_empty and col > 0 then
         opt.config.virt_text_win_col = i - 1 - cache.leftcol
@@ -132,19 +176,18 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   then
     return false
   end
+  cache = { snapshot = {} }
+  for i = toprow, botrow do
+    cache.snapshot[i + 1] =
+      { get_indent_lnum(i + 1), line_is_empty(i + 1), ffi.string(ml_get(i + 1)) }
+  end
   api.nvim_win_set_hl_ns(winid, ns)
   cache.leftcol = vim.fn.winsaveview().leftcol
   cache.step = vim.o.expandtab and get_shiftw_value(bufnr) or vim.bo[bufnr].tabstop
   cache.count = api.nvim_buf_line_count(bufnr)
   cache.currow = api.nvim_win_get_cursor(winid)[1] - 1
-  cache.range_srow, cache.range_erow, cache.cur_inlevel =
-    current_line_range(cache.currow, cache.step)
-  if only_current then
-    toprow, botrow = cache.currow, cache.currow
-  end
-  for i = toprow, botrow do
-    cache.snapshot[i + 1] = { get_indent_lnum(i + 1), line_is_empty(i + 1) }
-  end
+  local currow_indent = find_in_snapshot(cache.currow + 1)
+  update_cache_range(currow_indent)
 end
 
 return {
