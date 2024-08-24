@@ -2,8 +2,8 @@ local api, UP, DOWN, INVALID = vim.api, -1, 1, -1
 local buf_set_extmark, set_provider = api.nvim_buf_set_extmark, api.nvim_set_decoration_provider
 local ns = api.nvim_create_namespace('IndentLine')
 local ffi = require('ffi')
-local only_current = false
 local opt = {
+  only_current = false,
   config = {
     virt_text_pos = 'overlay',
     hl_mode = 'combine',
@@ -30,6 +30,8 @@ local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
 --- @class Snapshot
 --- @field indent? integer
 --- @field is_empty? boolean
+--- @field is_tab? boolean
+--- @field indent_cols? integer
 --- @field line_text? string
 ---
 --- @class Cache
@@ -50,23 +52,22 @@ local function get_shiftw_value(bufnr)
   return get_sw_value(handle)
 end
 
---- @param line string text of line
---- @param col integer column
---- @return boolean
-local function non_or_space(line, col)
-  local text = line:sub(col, col)
-  return text and (#text == 0 or text == ' ' or text == '\t') or false
-end
-
 --- @param lnum integer
 --- @return Snapshot
 local function make_snapshot(lnum)
   local line_text = ffi.string(ml_get(lnum))
   local is_empty = #line_text == 0 or only_spaces_or_tabs(line_text)
+  local indent_cols = line_text:find('[^ \t]')
+  indent_cols = indent_cols and indent_cols - 1 or INVALID
+  local indent = get_indent_lnum(lnum)
+  if is_empty then
+    indent_cols = indent
+  end
   return {
-    indent = get_indent_lnum(lnum),
+    indent = indent,
     is_empty = is_empty,
-    line_text = line_text,
+    is_tab = line_text:find('^\t') and true or false,
+    indent_cols = indent_cols,
   }
 end
 
@@ -93,7 +94,9 @@ local function range_in_snapshot(row, direction, fn)
 end
 
 local function out_current_range(row)
-  return only_current and cache.range_srow and (row < cache.range_srow or row > cache.range_erow)
+  return opt.only_current
+    and cache.range_srow
+    and (row < cache.range_srow or row > cache.range_erow)
 end
 
 local function update_cache_range(currow_indent)
@@ -147,24 +150,25 @@ local function on_line(_, _, bufnr, row)
 
   if sp.is_empty and sp.indent == 0 then
     sp.indent = math.max(ctx.indent_above, ctx.indent_below)
+    sp.indent_cols = sp.indent
   end
 
   for i = 1, sp.indent - 1, cache.step do
     local col = i - 1
     local level = math.floor(col / cache.step) + 1
-    if level < opt.minlevel or (only_current and level ~= cache.cur_inlevel) then
+    if level < opt.minlevel or (opt.only_current and level ~= cache.cur_inlevel) then
       goto continue
     end
     local row_in_curblock = cache.range_srow and (row > cache.range_srow and row < cache.range_erow)
     local higroup = row_in_curblock and level == cache.cur_inlevel and 'IndentLineCurrent'
       or 'IndentLine'
-    if only_current and row_in_curblock and level ~= cache.cur_inlevel then
+    if opt.only_current and row_in_curblock and level ~= cache.cur_inlevel then
       higroup = 'IndentLineCurHide'
     end
-    if not vim.o.expandtab or sp.line_text:find('^\t') then
+    if not vim.o.expandtab or sp.is_tab then
       col = level - 1
     end
-    if col >= cache.leftcol and non_or_space(sp.line_text, col + 1) then
+    if col >= cache.leftcol and col < sp.indent_cols then
       opt.config.virt_text[1][2] = higroup
       if sp.is_empty and col > 0 then
         opt.config.virt_text_win_col = i - 1 - cache.leftcol
@@ -186,12 +190,12 @@ local function on_win(_, winid, bufnr, toprow, botrow)
     return false
   end
   cache = { snapshot = {} }
+  cache.step = vim.o.expandtab and get_shiftw_value(bufnr) or vim.bo[bufnr].tabstop
   for i = toprow, botrow do
     cache.snapshot[i + 1] = make_snapshot(i + 1)
   end
   api.nvim_win_set_hl_ns(winid, ns)
   cache.leftcol = vim.fn.winsaveview().leftcol
-  cache.step = vim.o.expandtab and get_shiftw_value(bufnr) or vim.bo[bufnr].tabstop
   cache.count = api.nvim_buf_line_count(bufnr)
   cache.currow = api.nvim_win_get_cursor(winid)[1] - 1
   local currow_indent = find_in_snapshot(cache.currow + 1).indent
@@ -201,13 +205,13 @@ end
 return {
   setup = function(conf)
     conf = conf or {}
-    only_current = conf.only_current or false
+    opt.only_current = conf.only_current or false
     opt.exclude = { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal', 'prompt' }
     vim.list_extend(opt.exclude, conf.exclude or {})
     opt.config.virt_text = { { conf.char or '│' } }
     opt.minlevel = conf.minlevel or 1
     set_provider(ns, { on_win = on_win, on_line = on_line })
-    if only_current and vim.opt.cursorline then
+    if opt.only_current and vim.opt.cursorline then
       local bg = api.nvim_get_hl(0, { name = 'CursorLine' }).bg
       api.nvim_set_hl(0, 'IndentLineCurHide', { fg = bg })
     end
