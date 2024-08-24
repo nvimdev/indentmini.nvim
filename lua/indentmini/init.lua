@@ -96,6 +96,7 @@ end
 local function out_current_range(row)
   return opt.only_current
     and cache.range_srow
+    and cache.range_erow
     and (row < cache.range_srow or row > cache.range_erow)
 end
 
@@ -112,6 +113,9 @@ local function update_cache_range(currow_indent)
   end
   range_in_snapshot(cache.currow - 1, UP, range_fn)
   range_in_snapshot(cache.currow + 1, DOWN, range_fn)
+  if cache.range_srow and not cache.range_erow then
+    cache.range_erow = cache.count - 1
+  end
   cache.cur_inlevel = math.floor(currow_indent / cache.step)
 end
 
