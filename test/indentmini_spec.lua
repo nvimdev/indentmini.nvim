@@ -1,5 +1,5 @@
 require('indentmini').setup()
-
+local same = assert.same
 local channel, job_id
 
 local function clean()
@@ -123,4 +123,83 @@ describe('indent mini', function()
     }
     assert.same(expected, screenstr)
   end)
+
+  it('works on blank line case 2', function ()
+    local lines = {
+      "local function test()",
+      "  if true then",
+      "    if true then",
+      "      print('hello')",
+      "",
+      "      if true then",
+      "        print('hello')",
+      "      end",
+      "    end",
+      "  end",
+      "end"
+    }
+    local screenstr = screen(lines)
+    local expected = {
+      "local function test()     ",
+      "│ if true then            ",
+      "│ │ if true then          ",
+      "│ │ │ print('hello')      ",
+      "│ │ │                     ",
+      "│ │ │ if true then        ",
+      "│ │ │ │ print('hello')    ",
+      "│ │ │ end                 ",
+      "│ │ end                   ",
+      "│ end                     ",
+      "end                       "
+    }
+    assert.same(expected, screenstr)
+  end)
+
+  it('works test case 3', function ()
+    local lines = {
+     "local opt = {",
+     "  only_current = false,",
+     "}",
+     "",
+     "local function test()",
+     "  print('hello')",
+     "  if true then",
+     "    print('hello')",
+     "  end",
+     "end",
+    }
+    local screenstr = screen(lines)
+    local expected = {
+      "local opt = {             ",
+      "│ only_current = false,   ",
+      "}                         ",
+      "                          ",
+      "local function test()     ",
+      "│ print('hello')          ",
+      "│ if true then            ",
+      "│ │ print('hello')        ",
+      "│ end                     ",
+      "end                       "
+    }
+    same(expected, screenstr)
+  end)
+
+  -- it('works on non closed filetype',function()
+  --   local lines = {
+  --     "if true:",
+  --     "    open('t', 'w') as f:",
+  --     "        f.truncate()",
+  --     "",
+  --     "os.remove('t')"
+  --   }
+  --   local screenstr = screen(lines)
+  --   local expected = {
+  --     "if true:                  ",
+  --     "│ │ open('t', 'w') as f:  ",
+  --     "│ │ │ │ f.truncate()      ",
+  --     "",
+  --     "os.remove('t')            "
+  --   }
+  --   assert.same(expected, screenstr)
+  -- end)
 end)

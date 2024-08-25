@@ -22,20 +22,20 @@ ffi.cdef([[
   int get_indent_lnum(linenr_T lnum);
   char *ml_get(linenr_T lnum);
 ]])
-
 local C = ffi.C
 local ml_get = C.ml_get
 local find_buffer_by_handle = C.find_buffer_by_handle
 local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
+
 --- @class Snapshot
 --- @field indent? integer
 --- @field is_empty? boolean
 --- @field is_tab? boolean
 --- @field indent_cols? integer
 --- @field line_text? string
----
+
 --- @class Cache
---- @field snapshot Snapshot
+--- @field snapshot table<integer, Snapshot>
 local cache = { snapshot = {} }
 
 --- check text only has space or tab
@@ -52,23 +52,57 @@ local function get_shiftw_value(bufnr)
   return get_sw_value(handle)
 end
 
+--- store the line data in snapshot and update the blank line indent
 --- @param lnum integer
 --- @return Snapshot
 local function make_snapshot(lnum)
   local line_text = ffi.string(ml_get(lnum))
   local is_empty = #line_text == 0 or only_spaces_or_tabs(line_text)
+  local indent = is_empty and 0 or get_indent_lnum(lnum)
+  if is_empty then
+    local prev_lnum = lnum - 1
+    while prev_lnum >= 1 do
+      if not cache.snapshot[prev_lnum] then
+        cache.snapshot[prev_lnum] = make_snapshot(prev_lnum)
+      end
+      local sp = cache.snapshot[prev_lnum]
+      if (not sp.is_empty and sp.indent == 0) or (sp.indent > 0) then
+        if sp.indent > 0 then
+          indent = sp.indent
+        end
+        break
+      end
+      prev_lnum = prev_lnum - 1
+    end
+  end
+
+  local prev = cache.snapshot[lnum - 1]
+  if prev and prev.is_empty and prev.indent < indent then
+    local prev_lnum = lnum - 1
+    while prev_lnum >= 1 do
+      local sp = cache.snapshot[prev_lnum]
+      if not sp or not sp.is_empty or sp.indent >= indent then
+        break
+      end
+      sp.indent = indent
+      sp.indent_cols = indent
+      prev_lnum = prev_lnum - 1
+    end
+  end
   local indent_cols = line_text:find('[^ \t]')
   indent_cols = indent_cols and indent_cols - 1 or INVALID
-  local indent = get_indent_lnum(lnum)
   if is_empty then
     indent_cols = indent
   end
-  return {
+  local snapshot = {
     indent = indent,
     is_empty = is_empty,
     is_tab = line_text:find('^\t') and true or false,
     indent_cols = indent_cols,
   }
+
+  cache.snapshot[lnum] = snapshot
+  return snapshot
 end
 
 --- @param lnum integer
@@ -119,44 +153,11 @@ local function update_cache_range(currow_indent)
   cache.cur_inlevel = math.floor(currow_indent / cache.step)
 end
 
---- @class Context
---- @field row integer
---- @field indent_above integer
---- @field indent_below integer
----
---- @param row integer
---- @return Context
-local function init_context(row)
-  return {
-    row = row,
-    indent_above = INVALID,
-    indent_below = INVALID,
-  }
-end
-
---- @param ctx Context
---- @return boolean true the row in code block otherwise not
-local function row_in_code_block(ctx)
-  local function lookup_first_seen(_, empty)
-    return not empty
-  end
-  ctx.indent_above = range_in_snapshot(ctx.row - 1, UP, lookup_first_seen)
-  ctx.indent_below = range_in_snapshot(ctx.row + 1, DOWN, lookup_first_seen)
-  return not (ctx.indent_above == 0 and ctx.indent_below == 0)
-end
-
 local function on_line(_, _, bufnr, row)
   local sp = find_in_snapshot(row + 1)
-  local ctx = init_context(row)
-  if (sp.is_empty and not row_in_code_block(ctx)) or out_current_range(row) then
+  if sp.indent == 0 or out_current_range(row) then
     return
   end
-
-  if sp.is_empty and sp.indent == 0 then
-    sp.indent = math.max(ctx.indent_above, ctx.indent_below)
-    sp.indent_cols = sp.indent
-  end
-
   for i = 1, sp.indent - 1, cache.step do
     local col = i - 1
     local level = math.floor(col / cache.step) + 1
