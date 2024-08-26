@@ -43,8 +43,8 @@ local context = { snapshot = {} }
 --- @return boolean true only have space or tab
 local function only_spaces_or_tabs(text)
   for i = 1, #text do
-    local c = text:sub(i, i)
-    if c ~= ' ' and c ~= '\t' then
+    local byte = string.byte(text, i)
+    if byte ~= 32 and byte ~= 9 then -- 32 is space, 9 is tab
       return false
     end
   end
