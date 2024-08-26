@@ -164,20 +164,22 @@ local function on_line(_, _, bufnr, row)
   for i = 1, sp.indent - 1, context.step do
     local col = i - 1
     local level = math.floor(col / context.step) + 1
-    if level < opt.minlevel or (opt.only_current and level ~= context.cur_inlevel) then
-      goto continue
-    end
-    local row_in_curblock = context.range_srow
-      and (row > context.range_srow and row < context.range_erow)
-    local higroup = row_in_curblock and level == context.cur_inlevel and 'IndentLineCurrent'
-      or 'IndentLine'
-    if opt.only_current and row_in_curblock and level ~= context.cur_inlevel then
-      higroup = 'IndentLineCurHide'
-    end
     if not vim.o.expandtab or sp.is_tab then
       col = level - 1
     end
-    if col >= context.leftcol and col < sp.indent_cols then
+    if
+      col >= context.leftcol
+      and level >= opt.minlevel
+      and (not opt.only_current or level == context.cur_inlevel)
+      and col < sp.indent_cols
+    then
+      local row_in_curblock = context.range_srow
+        and (row > context.range_srow and row < context.range_erow)
+      local higroup = row_in_curblock and level == context.cur_inlevel and 'IndentLineCurrent'
+        or 'IndentLine'
+      if opt.only_current and row_in_curblock and level ~= context.cur_inlevel then
+        higroup = 'IndentLineCurHide'
+      end
       opt.config.virt_text[1][2] = higroup
       if sp.is_empty and col > 0 then
         opt.config.virt_text_win_col = i - 1 - context.leftcol
@@ -185,7 +187,6 @@ local function on_line(_, _, bufnr, row)
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
     end
-    ::continue::
   end
   if row == context.botrow then
     context = { snapshot = {} }
