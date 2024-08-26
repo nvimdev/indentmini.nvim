@@ -38,11 +38,17 @@ local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
 --- @field snapshot table<integer, Snapshot>
 local context = { snapshot = {} }
 
---- check text only has space or tab
+--- check text only has space or tab see bench/space_or_tab.lua
 --- @param text string
 --- @return boolean true only have space or tab
 local function only_spaces_or_tabs(text)
-  return text:match('^[ \t]*$') ~= nil
+  for i = 1, #text do
+    local c = text:sub(i, i)
+    if c ~= ' ' and c ~= '\t' then
+      return false
+    end
+  end
+  return true
 end
 
 --- @param bufnr integer
@@ -62,10 +68,7 @@ local function make_snapshot(lnum)
   if is_empty then
     local prev_lnum = lnum - 1
     while prev_lnum >= 1 do
-      if not context.snapshot[prev_lnum] then
-        context.snapshot[prev_lnum] = make_snapshot(prev_lnum)
-      end
-      local sp = context.snapshot[prev_lnum]
+      local sp = context.snapshot[prev_lnum] or make_snapshot(prev_lnum)
       if (not sp.is_empty and sp.indent == 0) or (sp.indent > 0) then
         if sp.indent > 0 then
           indent = sp.indent
