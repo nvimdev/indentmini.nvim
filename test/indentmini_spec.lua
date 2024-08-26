@@ -124,62 +124,62 @@ describe('indent mini', function()
     assert.same(expected, screenstr)
   end)
 
-  it('works on blank line case 2', function ()
+  it('works on blank line case 2', function()
     local lines = {
-      "local function test()",
-      "  if true then",
-      "    if true then",
+      'local function test()',
+      '  if true then',
+      '    if true then',
       "      print('hello')",
-      "",
-      "      if true then",
+      '',
+      '      if true then',
       "        print('hello')",
-      "      end",
-      "    end",
-      "  end",
-      "end"
+      '      end',
+      '    end',
+      '  end',
+      'end',
     }
     local screenstr = screen(lines)
     local expected = {
-      "local function test()     ",
-      "│ if true then            ",
-      "│ │ if true then          ",
+      'local function test()     ',
+      '│ if true then            ',
+      '│ │ if true then          ',
       "│ │ │ print('hello')      ",
-      "│ │ │                     ",
-      "│ │ │ if true then        ",
+      '│ │ │                     ',
+      '│ │ │ if true then        ',
       "│ │ │ │ print('hello')    ",
-      "│ │ │ end                 ",
-      "│ │ end                   ",
-      "│ end                     ",
-      "end                       "
+      '│ │ │ end                 ',
+      '│ │ end                   ',
+      '│ end                     ',
+      'end                       ',
     }
     assert.same(expected, screenstr)
   end)
 
-  it('works test case 3', function ()
+  it('works test case 3', function()
     local lines = {
-     "local opt = {",
-     "  only_current = false,",
-     "}",
-     "",
-     "local function test()",
-     "  print('hello')",
-     "  if true then",
-     "    print('hello')",
-     "  end",
-     "end",
+      'local opt = {',
+      '  only_current = false,',
+      '}',
+      '',
+      'local function test()',
+      "  print('hello')",
+      '  if true then',
+      "    print('hello')",
+      '  end',
+      'end',
     }
     local screenstr = screen(lines)
     local expected = {
-      "local opt = {             ",
-      "│ only_current = false,   ",
-      "}                         ",
-      "                          ",
-      "local function test()     ",
+      'local opt = {             ',
+      '│ only_current = false,   ',
+      '}                         ',
+      '                          ',
+      'local function test()     ',
       "│ print('hello')          ",
-      "│ if true then            ",
+      '│ if true then            ',
       "│ │ print('hello')        ",
-      "│ end                     ",
-      "end                       "
+      '│ end                     ',
+      'end                       ',
     }
     same(expected, screenstr)
   end)
