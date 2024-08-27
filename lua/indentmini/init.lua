@@ -203,7 +203,7 @@ local function on_win(_, winid, bufnr, toprow, botrow)
     return false
   end
   context = { snapshot = {} }
-  context.step = vim.o.expandtab and get_shiftw_value(bufnr) or vim.bo[bufnr].tabstop
+  context.step = get_shiftw_value(bufnr)
   for i = toprow, botrow do
     context.snapshot[i + 1] = make_snapshot(i + 1)
   end
