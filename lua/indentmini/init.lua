@@ -158,9 +158,16 @@ local function find_current_range(currow_indent)
   context.cur_inlevel = math.floor(currow_indent / context.step)
 end
 
+local function clean_ctx(row)
+  if row == context.botrow then
+    context = { snapshot = {} }
+  end
+end
+
 local function on_line(_, _, bufnr, row)
   local sp = find_in_snapshot(row + 1)
   if sp.indent == 0 or out_current_range(row) then
+    clean_ctx(row)
     return
   end
   for i = 1, sp.indent - 1, context.step do
@@ -189,9 +196,7 @@ local function on_line(_, _, bufnr, row)
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
     end
-  end
-  if row == context.botrow then
-    context = { snapshot = {} }
+    clean_ctx(row)
   end
 end
 
