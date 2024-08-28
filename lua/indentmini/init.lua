@@ -55,7 +55,7 @@ end
 --- @return integer the shiftwidth value of bufnr
 local function get_shiftw_value(bufnr)
   local handle = find_buffer_by_handle(bufnr, ffi.new('Error'))
-  return get_sw_value(handle)
+  return handle and get_sw_value(handle) or 0
 end
 
 --- store the line data in snapshot and update the blank line indent
@@ -97,10 +97,12 @@ local function make_snapshot(lnum)
   if is_empty then
     indent_cols = indent
   end
+  if not context.is_tab and line_text:find('^\t') then
+    context.is_tab = true
+  end
   local snapshot = {
     indent = indent,
     is_empty = is_empty,
-    is_tab = line_text:find('^\t') and true or false,
     indent_cols = indent_cols,
   }
 
@@ -164,7 +166,7 @@ local function on_line(_, _, bufnr, row)
   for i = 1, sp.indent - 1, context.step do
     local col = i - 1
     local level = math.floor(col / context.step) + 1
-    if not vim.o.expandtab or sp.is_tab then
+    if not vim.bo[bufnr].expandtab or context.is_tab then
       col = level - 1
     end
     if
@@ -203,10 +205,11 @@ local function on_win(_, winid, bufnr, toprow, botrow)
     return false
   end
   context = { snapshot = {} }
-  context.step = get_shiftw_value(bufnr)
+  context.is_tab = not vim.bo[bufnr].expandtab
   for i = toprow, botrow do
     context.snapshot[i + 1] = make_snapshot(i + 1)
   end
+  context.step = context.is_tab and vim.bo[bufnr].tabstop or get_shiftw_value(bufnr)
   api.nvim_win_set_hl_ns(winid, ns)
   context.leftcol = vim.fn.winsaveview().leftcol
   context.count = api.nvim_buf_line_count(bufnr)
