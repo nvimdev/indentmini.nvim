@@ -55,7 +55,7 @@ end
 --- @return integer the shiftwidth value of bufnr
 local function get_shiftw_value(bufnr)
   local handle = find_buffer_by_handle(bufnr, ffi.new('Error'))
-  return handle and get_sw_value(handle) or 0
+  return get_sw_value(handle)
 end
 
 --- store the line data in snapshot and update the blank line indent
@@ -166,7 +166,7 @@ local function on_line(_, _, bufnr, row)
   for i = 1, sp.indent - 1, context.step do
     local col = i - 1
     local level = math.floor(col / context.step) + 1
-    if not vim.bo[bufnr].expandtab or context.is_tab then
+    if context.is_tab then
       col = level - 1
     end
     if
