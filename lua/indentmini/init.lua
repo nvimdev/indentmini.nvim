@@ -36,7 +36,8 @@ local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
 
 --- @class Context
 --- @field snapshot table<integer, Snapshot>
-local context = { snapshot = {} }
+--- @field changedtick integer
+local context = { snapshot = {}, changedtick = INVALID }
 
 --- check text only has space or tab see bench/space_or_tab.lua
 --- @param text string
@@ -201,7 +202,10 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   then
     return false
   end
-  context = { snapshot = {} }
+  local changedtick = api.nvim_buf_get_changedtick(bufnr)
+  if changedtick ~= context.changedtick then
+    context = { snapshot = {}, changedtick = changedtick }
+  end
   context.is_tab = not vim.bo[bufnr].expandtab
   for i = toprow, botrow do
     context.snapshot[i + 1] = make_snapshot(i + 1)
