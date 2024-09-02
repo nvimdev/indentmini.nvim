@@ -98,9 +98,6 @@ local function make_snapshot(lnum)
   if is_empty then
     indent_cols = indent
   end
-  if not context.is_tab and line_text:find('^\t') then
-    context.is_tab = true
-  end
   local snapshot = {
     indent = indent,
     is_empty = is_empty,
@@ -141,8 +138,13 @@ local function out_current_range(row)
 end
 
 local function find_current_range(currow_indent)
+  local curlevel = math.ceil(currow_indent / context.tabstop) -- for mixup
   local range_fn = function(indent, empty, row)
-    if not empty and indent < currow_indent then
+    local level = math.ceil(indent / context.tabstop)
+    if
+      ((not empty and not context.mixup) and indent < currow_indent)
+      or (context.mixup and level < curlevel)
+    then
       if row < context.currow then
         context.range_srow = row
       else
@@ -156,7 +158,8 @@ local function find_current_range(currow_indent)
   if context.range_srow and not context.range_erow then
     context.range_erow = context.count - 1
   end
-  context.cur_inlevel = math.floor(currow_indent / context.step)
+  context.cur_inlevel = context.mixup and math.ceil(currow_indent / context.tabstop)
+    or math.floor(currow_indent / context.step)
 end
 
 local function on_line(_, _, bufnr, row)
@@ -164,10 +167,15 @@ local function on_line(_, _, bufnr, row)
   if sp.indent == 0 or out_current_range(row) then
     return
   end
-  for i = 1, sp.indent - 1, context.step do
+  -- mixup like vim code has shebang vi:set ts=8 sts=4 sw=4 noet:
+  -- 4 8 12 16 20 24
+  -- 1 1 2  2  3  3
+  local total = context.mixup and math.ceil(sp.indent / context.tabstop) or sp.indent - 1
+  local step = context.mixup and 1 or context.step
+  for i = 1, total, step do
     local col = i - 1
-    local level = math.floor(col / context.step) + 1
-    if context.is_tab then
+    local level = context.mixup and i or math.floor(col / context.step) + 1
+    if context.is_tab and not context.mixup then
       col = level - 1
     end
     if
@@ -185,7 +193,8 @@ local function on_line(_, _, bufnr, row)
       end
       opt.config.virt_text[1][2] = higroup
       if sp.is_empty and col > 0 then
-        opt.config.virt_text_win_col = i - 1 - context.leftcol
+        opt.config.virt_text_win_col = not context.mixup and i - 1 - context.leftcol
+          or (i - 1) * context.tabstop
       end
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
@@ -207,10 +216,13 @@ local function on_win(_, winid, bufnr, toprow, botrow)
     context = { snapshot = {}, changedtick = changedtick }
   end
   context.is_tab = not vim.bo[bufnr].expandtab
+  context.step = get_shiftw_value(bufnr)
+  context.tabstop = vim.bo[bufnr].tabstop
+  context.softtabstop = vim.bo[bufnr].softtabstop
+  context.mixup = context.is_tab and context.tabstop > context.softtabstop
   for i = toprow, botrow do
     context.snapshot[i + 1] = make_snapshot(i + 1)
   end
-  context.step = context.is_tab and vim.bo[bufnr].tabstop or get_shiftw_value(bufnr)
   api.nvim_win_set_hl_ns(winid, ns)
   context.leftcol = vim.fn.winsaveview().leftcol
   context.count = api.nvim_buf_line_count(bufnr)
