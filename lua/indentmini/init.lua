@@ -8,6 +8,7 @@ local opt = {
     virt_text_pos = 'overlay',
     hl_mode = 'combine',
     ephemeral = true,
+    virt_text_repeat_linebreak = true,
   },
 }
 
