@@ -8,7 +8,7 @@ local opt = {
     virt_text_pos = 'overlay',
     hl_mode = 'combine',
     ephemeral = true,
-    virt_text_repeat_linebreak = true,
+    virt_text_repeat_linebreak = false,
   },
 }
 
@@ -38,6 +38,7 @@ local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
 --- @class Context
 --- @field snapshot table<integer, Snapshot>
 --- @field changedtick integer
+--- @field wrap_state? table
 local context = { snapshot = {}, changedtick = INVALID }
 
 --- check text only has space or tab see bench/space_or_tab.lua
@@ -168,6 +169,9 @@ local function on_line(_, _, bufnr, row)
   if sp.indent == 0 or out_current_range(row) then
     return
   end
+  if context.wrap_state[row] ~= nil then
+    context.wrap_state[row] = true
+  end
   -- mixup like vim code has modeline vi:set ts=8 sts=4 sw=4 noet:
   -- 4 8 12 16 20 24
   -- 1 1 2  2  3  3
@@ -178,10 +182,6 @@ local function on_line(_, _, bufnr, row)
     local level = context.mixup and i or math.floor(col / context.step) + 1
     if context.is_tab and not context.mixup then
       col = level - 1
-    end
-    local virtcol = vim.fn.virtcol({ row + 1, col + 1 })
-    if virtcol > context.win_width then
-      break
     end
     if
       col >= context.leftcol
@@ -234,6 +234,7 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   context.count = api.nvim_buf_line_count(bufnr)
   context.currow = api.nvim_win_get_cursor(winid)[1] - 1
   context.botrow = botrow
+  context.wrap_state = {}
   local currow_indent = find_in_snapshot(context.currow + 1).indent
   find_current_range(currow_indent)
 end
