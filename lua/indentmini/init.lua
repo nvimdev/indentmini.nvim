@@ -163,21 +163,9 @@ local function find_current_range(currow_indent)
     or math.floor(currow_indent / context.step)
 end
 
-local function is_wrapped_line(winid, lnum)
-  if not vim.wo[winid].wrap then
-    return false
-  end
-  local win_width = api.nvim_win_get_width(0)
-  local virtcol = vim.fn.virtcol({ lnum, '$' })
-  return virtcol > win_width and true or false
-end
-
-local next_is_wrap = false
-
-local function on_line(_, winid, bufnr, row)
+local function on_line(_, _, bufnr, row)
   local sp = find_in_snapshot(row + 1)
-  if sp.indent == 0 or out_current_range(row) or next_is_wrap then
-    next_is_wrap = false
+  if sp.indent == 0 or out_current_range(row) then
     return
   end
   -- mixup like vim code has modeline vi:set ts=8 sts=4 sw=4 noet:
@@ -190,6 +178,10 @@ local function on_line(_, winid, bufnr, row)
     local level = context.mixup and i or math.floor(col / context.step) + 1
     if context.is_tab and not context.mixup then
       col = level - 1
+    end
+    local virtcol = vim.fn.virtcol({ row + 1, col + 1 })
+    if virtcol > context.win_width then
+      break
     end
     if
       col >= context.leftcol
@@ -213,7 +205,6 @@ local function on_line(_, winid, bufnr, row)
       opt.config.virt_text_win_col = nil
     end
   end
-  next_is_wrap = is_wrapped_line(winid, row + 1)
 end
 
 local function on_win(_, winid, bufnr, toprow, botrow)
@@ -233,6 +224,7 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   context.step = get_shiftw_value(bufnr)
   context.tabstop = vim.bo[bufnr].tabstop
   context.softtabstop = vim.bo[bufnr].softtabstop
+  context.win_width = api.nvim_win_get_width(winid)
   context.mixup = context.is_tab and context.tabstop > context.softtabstop
   for i = toprow, botrow do
     context.snapshot[i + 1] = make_snapshot(i + 1)
