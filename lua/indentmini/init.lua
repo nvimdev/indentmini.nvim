@@ -163,12 +163,24 @@ local function find_current_range(currow_indent)
     or math.floor(currow_indent / context.step)
 end
 
-local function on_line(_, _, bufnr, row)
+local function is_wrapped_line(winid, lnum)
+  if not vim.wo[winid].wrap then
+    return false
+  end
+  local win_width = api.nvim_win_get_width(0)
+  local virtcol = vim.fn.virtcol({ lnum, '$' })
+  return virtcol > win_width and true or false
+end
+
+local next_is_wrap = false
+
+local function on_line(_, winid, bufnr, row)
   local sp = find_in_snapshot(row + 1)
-  if sp.indent == 0 or out_current_range(row) then
+  if sp.indent == 0 or out_current_range(row) or next_is_wrap then
+    next_is_wrap = false
     return
   end
-  -- mixup like vim code has shebang vi:set ts=8 sts=4 sw=4 noet:
+  -- mixup like vim code has modeline vi:set ts=8 sts=4 sw=4 noet:
   -- 4 8 12 16 20 24
   -- 1 1 2  2  3  3
   local total = context.mixup and math.ceil(sp.indent / context.tabstop) or sp.indent - 1
@@ -201,6 +213,7 @@ local function on_line(_, _, bufnr, row)
       opt.config.virt_text_win_col = nil
     end
   end
+  next_is_wrap = is_wrapped_line(winid, row + 1)
 end
 
 local function on_win(_, winid, bufnr, toprow, botrow)
@@ -237,7 +250,7 @@ return {
   setup = function(conf)
     conf = conf or {}
     opt.only_current = conf.only_current or false
-    opt.exclude = { 'dashboard', 'lazy', 'help', 'markdown', 'nofile', 'terminal', 'prompt' }
+    opt.exclude = { 'dashboard', 'lazy', 'help', 'nofile', 'terminal', 'prompt' }
     vim.list_extend(opt.exclude, conf.exclude or {})
     opt.config.virt_text = { { conf.char or '│' } }
     opt.minlevel = conf.minlevel or 1
