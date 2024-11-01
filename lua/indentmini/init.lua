@@ -8,7 +8,6 @@ local opt = {
     virt_text_pos = 'overlay',
     hl_mode = 'combine',
     ephemeral = true,
-    virt_text_repeat_linebreak = false,
   },
 }
 
@@ -216,6 +215,7 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   then
     return false
   end
+  opt.config.virt_text_repeat_linebreak = vim.wo[winid].wrap and vim.wo[winid].breakindent
   local changedtick = api.nvim_buf_get_changedtick(bufnr)
   if changedtick ~= context.changedtick then
     context = { snapshot = {}, changedtick = changedtick }
