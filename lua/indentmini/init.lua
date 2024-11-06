@@ -164,6 +164,9 @@ local function find_current_range(currow_indent)
 end
 
 local function on_line(_, _, bufnr, row)
+  if row == context.currow and api.nvim_get_mode().mode == 'i' then
+    return
+  end
   local sp = find_in_snapshot(row + 1)
   if sp.indent == 0 or out_current_range(row) then
     return
