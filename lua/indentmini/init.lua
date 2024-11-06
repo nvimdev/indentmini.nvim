@@ -164,9 +164,6 @@ local function find_current_range(currow_indent)
 end
 
 local function on_line(_, _, bufnr, row)
-  if row == context.currow and api.nvim_get_mode().mode == 'i' then
-    return
-  end
   local sp = find_in_snapshot(row + 1)
   if sp.indent == 0 or out_current_range(row) then
     return
@@ -174,6 +171,7 @@ local function on_line(_, _, bufnr, row)
   if context.wrap_state[row] ~= nil then
     context.wrap_state[row] = true
   end
+  local currow_insert = api.nvim_get_mode().mode == 'i' and context.currow == row
   -- mixup like vim code has modeline vi:set ts=8 sts=4 sw=4 noet:
   -- 4 8 12 16 20 24
   -- 1 1 2  2  3  3
@@ -190,6 +188,7 @@ local function on_line(_, _, bufnr, row)
       and level >= opt.minlevel
       and (not opt.only_current or level == context.cur_inlevel)
       and col < sp.indent_cols
+      and (not currow_insert or col ~= context.curcol)
     then
       local row_in_curblock = context.range_srow
         and (row > context.range_srow and row < context.range_erow)
@@ -235,7 +234,9 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   api.nvim_win_set_hl_ns(winid, ns)
   context.leftcol = vim.fn.winsaveview().leftcol
   context.count = api.nvim_buf_line_count(bufnr)
-  context.currow = api.nvim_win_get_cursor(winid)[1] - 1
+  local pos = api.nvim_win_get_cursor(winid)
+  context.currow = pos[1] - 1
+  context.curcol = pos[2]
   context.botrow = botrow
   context.wrap_state = {}
   local currow_indent = find_in_snapshot(context.currow + 1).indent
