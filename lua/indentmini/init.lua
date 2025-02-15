@@ -1,7 +1,7 @@
 local api, UP, DOWN, INVALID = vim.api, -1, 1, -1
 local buf_set_extmark, set_provider = api.nvim_buf_set_extmark, api.nvim_set_decoration_provider
 local ns = api.nvim_create_namespace('IndentLine')
-local ffi = require('ffi')
+local ffi, treesitter = require('ffi'), vim.treesitter
 local opt = {
   only_current = false,
   config = {
@@ -37,7 +37,6 @@ local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
 --- @class Context
 --- @field snapshot table<integer, Snapshot>
 --- @field changedtick integer
---- @field wrap_state? table
 local context = { snapshot = {}, changedtick = INVALID }
 
 --- check text only has space or tab see bench/space_or_tab.lua
@@ -60,12 +59,76 @@ local function get_shiftw_value(bufnr)
   return get_sw_value(handle)
 end
 
+---@paren node TSNode
+---@return TSNode?
+local function ts_find_indentation_node(node)
+  local cur_row = node:range()
+  local current = node
+
+  while current do
+    current = current:parent()
+    if current then
+      local row = current:range()
+      if row < cur_row then
+        return current
+      end
+    end
+  end
+  return nil
+end
+
+---@paren lnum integer
+---@return integer?
+local function ts_get_indent(lnum)
+  local node = treesitter.get_node({ pos = { lnum - 1, 0 } })
+  if not node then
+    return
+  end
+  local srow = node:range()
+  if lnum - 1 > srow then
+    local count = node:named_child_count()
+    local last_valid_child = nil
+    for i = 0, count - 1 do
+      local child = node:named_child(i)
+      if child then
+        local child_row = child:range()
+        if child_row < lnum - 1 then
+          last_valid_child = child
+        else
+          break
+        end
+      end
+    end
+    if last_valid_child then
+      return get_indent_lnum(last_valid_child:range() + 1)
+    end
+  end
+  local parent = ts_find_indentation_node(node)
+  if not parent then
+    return
+  end
+  return get_indent_lnum(parent:range() + 1)
+end
+
 --- store the line data in snapshot and update the blank line indent
 --- @param lnum integer
 --- @return Snapshot
 local function make_snapshot(lnum)
   local line_text = ffi.string(ml_get(lnum))
   local is_empty = #line_text == 0 or only_spaces_or_tabs(line_text)
+  if is_empty and treesitter.get_parser() then
+    local indent = ts_get_indent(lnum)
+    if indent then
+      local snapshot = {
+        indent = indent,
+        is_empty = is_empty,
+        indent_cols = indent,
+      }
+      context.snapshot[lnum] = snapshot
+      return snapshot
+    end
+  end
+
   local indent = is_empty and 0 or get_indent_lnum(lnum)
   if is_empty then
     local prev_lnum = lnum - 1
@@ -168,9 +231,6 @@ local function on_line(_, _, bufnr, row)
   if sp.indent == 0 or out_current_range(row) then
     return
   end
-  if context.wrap_state[row] ~= nil then
-    context.wrap_state[row] = true
-  end
   local currow_insert = api.nvim_get_mode().mode == 'i' and context.currow == row
   -- mixup like vim code has modeline vi:set ts=8 sts=4 sw=4 noet:
   -- 4 8 12 16 20 24
@@ -238,7 +298,6 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   context.currow = pos[1] - 1
   context.curcol = pos[2]
   context.botrow = botrow
-  context.wrap_state = {}
   local currow_indent = find_in_snapshot(context.currow + 1).indent
   find_current_range(currow_indent)
 end
