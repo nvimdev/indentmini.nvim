@@ -128,9 +128,7 @@ end
 local function make_snapshot(lnum)
   local line_text = ffi.string(ml_get(lnum))
   local is_empty = #line_text == 0 or only_spaces_or_tabs(line_text)
-  local ok = pcall(treesitter.get_paser)
-
-  if is_empty and ok then
+  if is_empty and context.has_ts then
     local indent = ts_get_indent(lnum)
     if indent then
       local packed = pack_snapshot(true, indent, indent)
@@ -311,6 +309,8 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   context.currow = pos[1] - 1
   context.curcol = pos[2]
   context.botrow = botrow
+  local ok = pcall(treesitter.get_paser, bufnr)
+  context.has_ts = ok
   local currow_indent = find_in_snapshot(context.currow + 1).indent
   find_current_range(currow_indent)
 end
