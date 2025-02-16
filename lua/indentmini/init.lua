@@ -251,6 +251,7 @@ local function on_line(_, _, bufnr, row)
   -- 1 1 2  2  3  3
   local total = context.mixup and math.ceil(sp.indent / context.tabstop) or sp.indent - 1
   local step = context.mixup and 1 or context.step
+  local higroup = 'IndentLine'
   for i = 1, total, step do
     local col = i - 1
     local level = context.mixup and i or math.floor(col / context.step) + 1
@@ -266,10 +267,8 @@ local function on_line(_, _, bufnr, row)
     then
       local row_in_curblock = context.range_srow
         and (row > context.range_srow and row < context.range_erow)
-      local higroup = row_in_curblock and level == context.cur_inlevel and 'IndentLineCurrent'
-        or 'IndentLine'
-      if opt.only_current and row_in_curblock and level ~= context.cur_inlevel then
-        higroup = 'IndentLineCurHide'
+      if opt.only_current and row_in_curblock and level == context.cur_inlevel then
+        higroup = 'IndentLineCurrent'
       end
       opt.config.virt_text[1][2] = higroup
       if sp.is_empty and col > 0 then
@@ -322,9 +321,5 @@ return {
     opt.config.virt_text = { { conf.char or '│' } }
     opt.minlevel = conf.minlevel or 1
     set_provider(ns, { on_win = on_win, on_line = on_line })
-    if opt.only_current and vim.opt.cursorline then
-      local bg = api.nvim_get_hl(0, { name = 'CursorLine' }).bg
-      api.nvim_set_hl(0, 'IndentLineCurHide', { fg = bg })
-    end
   end,
 }
