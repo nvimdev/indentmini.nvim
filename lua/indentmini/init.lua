@@ -27,17 +27,9 @@ local ml_get = C.ml_get
 local find_buffer_by_handle = C.find_buffer_by_handle
 local get_sw_value, get_indent_lnum = C.get_sw_value, C.get_indent_lnum
 
---- @class Snapshot
---- @field indent? integer
---- @field is_empty? boolean
---- @field is_tab? boolean
---- @field indent_cols? integer
---- @field line_text? string
-
 --- @class Context
---- @field snapshot table<integer, Snapshot>
---- @field changedtick integer
-local context = { snapshot = {}, changedtick = INVALID }
+--- @field snapshot table<integer, integer>
+local context = { snapshot = {} }
 
 --- check text only has space or tab see bench/space_or_tab.lua
 --- @param text string
@@ -110,23 +102,40 @@ local function ts_get_indent(lnum)
   return get_indent_lnum(parent:range() + 1)
 end
 
+-- Bit operations for snapshot packing/unpacking
+-- empty(1) | indent(6) | indent_cols(9)
+local function pack_snapshot(empty, indent, indent_cols)
+  return bit.bor(
+    bit.lshift(empty and 1 or 0, 15),
+    bit.lshift(bit.band(indent, 0x3F), 9),
+    bit.band(indent_cols, 0x1FF)
+  )
+end
+
+---@param packed integer
+---@return table
+local function unpack_snapshot(packed)
+  return {
+    is_empty = bit.band(bit.rshift(packed, 15), 1) == 1,
+    indent = bit.band(bit.rshift(packed, 9), 0x3F),
+    indent_cols = bit.band(packed, 0x1FF),
+  }
+end
+
 --- store the line data in snapshot and update the blank line indent
 --- @param lnum integer
---- @return Snapshot
+--- @return table
 local function make_snapshot(lnum)
   local line_text = ffi.string(ml_get(lnum))
   local is_empty = #line_text == 0 or only_spaces_or_tabs(line_text)
   local ok = pcall(treesitter.get_paser)
+
   if is_empty and ok then
     local indent = ts_get_indent(lnum)
     if indent then
-      local snapshot = {
-        indent = indent,
-        is_empty = is_empty,
-        indent_cols = indent,
-      }
-      context.snapshot[lnum] = snapshot
-      return snapshot
+      local packed = pack_snapshot(true, indent, indent)
+      context.snapshot[lnum] = packed
+      return unpack_snapshot(packed)
     end
   end
 
@@ -134,7 +143,8 @@ local function make_snapshot(lnum)
   if is_empty then
     local prev_lnum = lnum - 1
     while prev_lnum >= 1 do
-      local sp = context.snapshot[prev_lnum] or make_snapshot(prev_lnum)
+      local prev_packed = context.snapshot[prev_lnum]
+      local sp = prev_packed and unpack_snapshot(prev_packed) or make_snapshot(prev_lnum)
       if (not sp.is_empty and sp.indent == 0) or (sp.indent > 0) then
         if sp.indent > 0 then
           indent = sp.indent
@@ -145,39 +155,43 @@ local function make_snapshot(lnum)
     end
   end
 
-  local prev = context.snapshot[lnum - 1]
-  if prev and prev.is_empty and prev.indent < indent then
-    local prev_lnum = lnum - 1
-    while prev_lnum >= 1 do
-      local sp = context.snapshot[prev_lnum]
-      if not sp or not sp.is_empty or sp.indent >= indent then
-        break
+  local prev_packed = context.snapshot[lnum - 1]
+  if prev_packed then
+    local prev = unpack_snapshot(prev_packed)
+    if prev.is_empty and prev.indent < indent then
+      local prev_lnum = lnum - 1
+      while prev_lnum >= 1 do
+        local sp_packed = context.snapshot[prev_lnum]
+        if not sp_packed then
+          break
+        end
+        local sp = unpack_snapshot(sp_packed)
+        if not sp.is_empty or sp.indent >= indent then
+          break
+        end
+        context.snapshot[prev_lnum] = pack_snapshot(sp.is_empty, indent, indent)
+        prev_lnum = prev_lnum - 1
       end
-      sp.indent = indent
-      sp.indent_cols = indent
-      prev_lnum = prev_lnum - 1
     end
   end
+
   local indent_cols = line_text:find('[^ \t]')
   indent_cols = indent_cols and indent_cols - 1 or INVALID
   if is_empty then
     indent_cols = indent
   end
-  local snapshot = {
-    indent = indent,
-    is_empty = is_empty,
-    indent_cols = indent_cols,
-  }
 
-  context.snapshot[lnum] = snapshot
-  return snapshot
+  local packed = pack_snapshot(is_empty, indent, indent_cols)
+  context.snapshot[lnum] = packed
+  return unpack_snapshot(packed)
 end
 
---- @param lnum integer
---- @return Snapshot
 local function find_in_snapshot(lnum)
-  context.snapshot[lnum] = context.snapshot[lnum] or make_snapshot(lnum)
-  return context.snapshot[lnum]
+  local packed = context.snapshot[lnum]
+  if not packed then
+    return make_snapshot(lnum)
+  end
+  return unpack_snapshot(packed)
 end
 
 --- @param row integer
@@ -279,10 +293,8 @@ local function on_win(_, winid, bufnr, toprow, botrow)
     return false
   end
   opt.config.virt_text_repeat_linebreak = vim.wo[winid].wrap and vim.wo[winid].breakindent
-  local changedtick = api.nvim_buf_get_changedtick(bufnr)
-  if changedtick ~= context.changedtick then
-    context = { snapshot = {}, changedtick = changedtick }
-  end
+  ---@diagnostic disable-next-line: missing-fields
+  context = { snapshot = {} }
   context.is_tab = not vim.bo[bufnr].expandtab
   context.step = get_shiftw_value(bufnr)
   context.tabstop = vim.bo[bufnr].tabstop
@@ -290,7 +302,7 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   context.win_width = api.nvim_win_get_width(winid)
   context.mixup = context.is_tab and context.tabstop > context.softtabstop
   for i = toprow, botrow do
-    context.snapshot[i + 1] = make_snapshot(i + 1)
+    make_snapshot(i + 1)
   end
   api.nvim_win_set_hl_ns(winid, ns)
   context.leftcol = vim.fn.winsaveview().leftcol
