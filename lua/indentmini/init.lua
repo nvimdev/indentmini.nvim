@@ -52,57 +52,6 @@ local function get_shiftw_value(bufnr)
   return get_sw_value(handle)
 end
 
----@paren node TSNode
----@return TSNode?
-local function ts_find_indentation_node(node)
-  local cur_row = node:range()
-  local current = node
-
-  while current do
-    current = current:parent()
-    if current then
-      local row = current:range()
-      if row < cur_row then
-        return current
-      end
-    end
-  end
-  return nil
-end
-
----@paren lnum integer
----@return integer?
-local function ts_get_indent(lnum)
-  local node = treesitter.get_node({ pos = { lnum - 1, 0 } })
-  if not node then
-    return
-  end
-  local srow = node:range()
-  if lnum - 1 > srow then
-    local count = node:named_child_count()
-    local last_valid_child = nil
-    for i = 0, count - 1 do
-      local child = node:named_child(i)
-      if child then
-        local child_row = child:range()
-        if child_row < lnum - 1 then
-          last_valid_child = child
-        else
-          break
-        end
-      end
-    end
-    if last_valid_child then
-      return get_indent_lnum(last_valid_child:range() + 1)
-    end
-  end
-  local parent = ts_find_indentation_node(node)
-  if not parent then
-    return
-  end
-  return get_indent_lnum(parent:range() + 1)
-end
-
 -- Bit operations for snapshot packing/unpacking
 -- empty(1) | indent(6) | indent_cols(9)
 local function pack_snapshot(empty, indent, indent_cols)
@@ -130,11 +79,14 @@ local function make_snapshot(lnum)
   local line_text = ffi.string(ml_get(lnum))
   local is_empty = #line_text == 0 or only_spaces_or_tabs(line_text)
   if is_empty and context.has_ts then
-    local indent = ts_get_indent(lnum)
-    if indent then
-      local packed = pack_snapshot(true, indent, indent)
-      context.snapshot[lnum] = packed
-      return unpack_snapshot(packed)
+    local node = treesitter.get_node({ pos = { lnum - 1, 0 } })
+    if node then
+      local rtype = node:tree():root():type()
+      if node:type() == rtype then
+        local packed = pack_snapshot(true, 0, 0)
+        context.snapshot[lnum] = packed
+        return unpack_snapshot(packed)
+      end
     end
   end
 
@@ -265,7 +217,7 @@ local function on_line(_, _, bufnr, row)
       and (not currow_insert or col ~= context.curcol)
     then
       local row_in_curblock = context.range_srow
-        and (row > context.range_srow and row < context.range_erow)
+        and (row > context.range_srow and row <= context.range_erow)
       local higroup = row_in_curblock and level == context.cur_inlevel and 'IndentLineCurrent'
         or 'IndentLine'
       opt.config.virt_text[1][2] = higroup
@@ -297,6 +249,8 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   context.softtabstop = vim.bo[bufnr].softtabstop
   context.win_width = api.nvim_win_get_width(winid)
   context.mixup = context.is_tab and context.tabstop > context.softtabstop
+  local ok = pcall(treesitter.get_parser, bufnr)
+  context.has_ts = ok
   for i = toprow, botrow do
     make_snapshot(i + 1)
   end
@@ -306,8 +260,6 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   local pos = api.nvim_win_get_cursor(winid)
   context.currow = pos[1] - 1
   context.curcol = pos[2]
-  local ok = pcall(treesitter.get_paser, bufnr)
-  context.has_ts = ok
   find_current_range(find_in_snapshot(context.currow + 1).indent)
 end
 
