@@ -81,12 +81,19 @@ local function make_snapshot(lnum)
   if is_empty and context.has_ts then
     local node = treesitter.get_node({ pos = { lnum - 1, 0 } })
     if node then
-      context.tree_node_type = node:tree():root():type() or context.tree_node_type
-      if node:type() == context.tree_node_type then
-        local packed = pack_snapshot(true, 0, 0)
-        context.snapshot[lnum] = packed
-        return unpack_snapshot(packed)
+      context.tree_root = context.tree_root or node:tree():root():type()
+      local indent = 0
+      if context.tree_root and node:type() ~= context.tree_root then
+        local parent = node:parent()
+        if parent then
+          local p_srow = parent:range()
+          indent = get_indent_lnum(p_srow + 1)
+          indent = indent + context.step
+        end
       end
+      local packed = pack_snapshot(true, indent, indent)
+      context.snapshot[lnum] = packed
+      return unpack_snapshot(packed)
     end
   end
 
