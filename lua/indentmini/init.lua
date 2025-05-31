@@ -98,6 +98,16 @@ local function make_snapshot(lnum)
   end
 
   local indent = is_empty and 0 or get_indent_lnum(lnum)
+  -- adjust indent
+  if not is_empty and not context.mixup and (indent % context.step) ~= 0 then
+    local col = api.nvim_win_get_cursor(0)[2]
+    if col > 0 and not api.nvim_get_current_line():sub(1, col):find('%w') then
+      indent = indent
+      local n = math.floor((indent - context.step) / context.step)
+      indent = context.step + n * context.step
+    end
+  end
+
   if is_empty then
     local prev_lnum = lnum - 1
     while prev_lnum >= 1 do
@@ -174,7 +184,7 @@ local function out_current_range(row)
     and (row < context.range_srow or row > context.range_erow)
 end
 
-local function find_current_range(currow_indent)
+local function find_current_range(currow_indent, currow)
   local curlevel = math.ceil(currow_indent / context.tabstop) -- for mixup
   local range_fn = function(indent, empty, row)
     local level = math.ceil(indent / context.tabstop)
@@ -256,8 +266,7 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   context.softtabstop = vim.bo[bufnr].softtabstop
   context.win_width = api.nvim_win_get_width(winid)
   context.mixup = context.is_tab and context.tabstop > context.softtabstop
-  local ok = pcall(treesitter.get_parser, bufnr)
-  context.has_ts = ok
+  context.has_ts = pcall(treesitter.get_parser, bufnr)
   for i = toprow, botrow do
     make_snapshot(i + 1)
   end
@@ -267,7 +276,7 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   local pos = api.nvim_win_get_cursor(winid)
   context.currow = pos[1] - 1
   context.curcol = pos[2]
-  find_current_range(find_in_snapshot(context.currow + 1).indent)
+  find_current_range(find_in_snapshot(context.currow + 1).indent, context.currow)
 end
 
 return {
