@@ -87,8 +87,11 @@ local function make_snapshot(lnum)
         local parent = node:parent()
         if parent then
           local p_srow = parent:range()
-          indent = get_indent_lnum(p_srow + 1)
-          indent = indent + context.step
+          -- usually top of file does not have indent so skiped
+          if p_srow > 0 then
+            indent = get_indent_lnum(p_srow + 1)
+            indent = indent + context.step
+          end
         end
       end
       local packed = pack_snapshot(true, indent, indent)
