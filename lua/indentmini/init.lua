@@ -279,7 +279,21 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   local pos = api.nvim_win_get_cursor(winid)
   context.currow = pos[1] - 1
   context.curcol = pos[2]
-  find_current_range(find_in_snapshot(context.currow + 1).indent, context.currow)
+  local cur_indent = find_in_snapshot(context.currow + 1).indent
+  local next_indent = (context.currow + 1 < context.count) and find_in_snapshot(context.currow + 2).indent or 0
+  -- We only want to look backwards if we are closing a block
+  local line_text = api.nvim_get_current_line()
+  local is_closer = line_text:find('^%s*[})%]]') or line_text:find('^%s*end')
+  local target_indent = cur_indent
+  if next_indent > cur_indent then
+    target_indent = next_indent
+  elseif is_closer then
+    local prev_indent = context.currow > 0 and find_in_snapshot(context.currow).indent or 0
+    if prev_indent > cur_indent then
+      target_indent = prev_indent
+    end
+  end
+  find_current_range(target_indent, context.currow)
 end
 
 return {
