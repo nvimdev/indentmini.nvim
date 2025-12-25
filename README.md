@@ -17,6 +17,7 @@ available config values in setup table.
 - exclude  -- table  type add exclude filetype in this table ie `{ 'markdown', 'xxx'}`
 - minlevel -- number the min level that show indent line default is 1
 - only_current -- boolean default is false when true will only highlight current range
+- exclude_nodetype -- table with TS classes where guides are not drawn, defaults to `{ 'string', 'comment' }`
 
 ```lua
 config = function()

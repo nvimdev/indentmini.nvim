@@ -5,6 +5,7 @@ local ffi, treesitter = require('ffi'), vim.treesitter
 local opt = {
   only_current = false,
   exclude = { 'dashboard', 'lazy', 'help', 'nofile', 'terminal', 'prompt', 'qf' },
+  exclude_nodetype = { 'string', 'comment' },
   config = {
     virt_text_pos = 'overlay',
     hl_mode = 'combine',
@@ -229,6 +230,15 @@ local function on_line(_, _, bufnr, row)
     if context.is_tab and not context.mixup then
       col = level - 1
     end
+    if context.has_ts then
+      local node = treesitter.get_node({ bufnr = bufnr, pos = { row, col }, ignore_injections = true })
+      while node do
+        if vim.tbl_contains(opt.exclude_nodetype, node:type()) then
+          goto continue
+        end
+        node = node:parent()
+      end
+    end
     if
       col >= context.leftcol
       and level >= opt.minlevel
@@ -248,6 +258,7 @@ local function on_line(_, _, bufnr, row)
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
     end
+    ::continue::
   end
 end
 
@@ -301,6 +312,7 @@ return {
     conf = conf or {}
     opt.only_current = conf.only_current or false
     opt.exclude = vim.list_extend(opt.exclude, conf.exclude or {})
+    opt.exclude_nodetype = vim.list_extend(opt.exclude_nodetype, conf.exclude_nodetype or {})
     opt.config.virt_text = { { conf.char or '│' } }
     opt.minlevel = conf.minlevel or 1
     set_provider(ns, { on_win = on_win, on_line = on_line })
