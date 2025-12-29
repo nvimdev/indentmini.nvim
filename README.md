@@ -18,11 +18,40 @@ available config values in setup table.
 - minlevel -- number the min level that show indent line default is 1
 - only_current -- boolean default is false when true will only highlight current range
 - exclude_nodetype -- table with TS classes where guides are not drawn, defaults to `{ 'string', 'comment' }`
+- key -- string, hotkey to toggle the indent guides. Not set by default.
+- enabled -- boolean, controls the default state of the plugin
 
 ```lua
 config = function()
     require("indentmini").setup() -- use default config
 end,
+```
+
+## Toggle Functionality
+
+You can toggle indent guides via:
+
+### Commands
+
+- `:IndentToggle` - Toggle indent guides on/off
+- `:IndentEnable` - Enable indent guides
+- `:IndentDisable` - Disable indent guides
+
+### Hotkey
+
+```lua
+require("indentmini").setup({
+    key = '<F5>',
+})
+```
+
+### API
+
+```lua
+local indentmini = require("indentmini")
+indentmini.toggle()
+indentmini.enable()
+indentmini.disable()
 ```
 
 ## Highlight

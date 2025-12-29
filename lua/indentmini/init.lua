@@ -13,6 +13,8 @@ local opt = {
   },
 }
 
+local enabled = true
+
 ffi.cdef([[
   typedef struct {} Error;
   typedef int colnr_T;
@@ -263,6 +265,9 @@ local function on_line(_, _, bufnr, row)
 end
 
 local function on_win(_, winid, bufnr, toprow, botrow)
+  if not enabled then
+    return false
+  end
   if
     bufnr ~= api.nvim_get_current_buf()
     or vim.iter(opt.exclude):find(function(v)
@@ -307,14 +312,53 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   find_current_range(target_indent, context.currow)
 end
 
-return {
-  setup = function(conf)
-    conf = conf or {}
-    opt.only_current = conf.only_current or false
-    opt.exclude = vim.list_extend(opt.exclude, conf.exclude or {})
-    opt.exclude_nodetype = vim.list_extend(opt.exclude_nodetype, conf.exclude_nodetype or {})
-    opt.config.virt_text = { { conf.char or '│' } }
-    opt.minlevel = conf.minlevel or 1
-    set_provider(ns, { on_win = on_win, on_line = on_line })
-  end,
-}
+local M = {}
+
+function M.toggle()
+  enabled = not enabled
+  vim.cmd('redraw!')
+end
+
+function M.enable()
+  enabled = true
+  vim.cmd('redraw!')
+end
+
+function M.disable()
+  enabled = false
+  vim.cmd('redraw!')
+end
+
+--- @param conf table|nil IndentMini config
+function M.setup(conf)
+  conf = conf or {}
+  enabled = conf.enabled ~= false
+  opt.only_current = conf.only_current or false
+  opt.exclude = vim.list_extend(opt.exclude, conf.exclude or {})
+  opt.exclude_nodetype = vim.list_extend(opt.exclude_nodetype, conf.exclude_nodetype or {})
+  opt.config.virt_text = { { conf.char or '│' } }
+  opt.minlevel = conf.minlevel or 1
+  set_provider(ns, { on_win = on_win, on_line = on_line })
+
+  vim.api.nvim_create_user_command('IndentToggle', function()
+    M.toggle()
+  end, { desc = 'Toggle indent guides' })
+
+  vim.api.nvim_create_user_command('IndentEnable', function()
+    M.enable()
+  end, { desc = 'Enable indent guides' })
+
+  vim.api.nvim_create_user_command('IndentDisable', function()
+    M.disable()
+  end, { desc = 'Disable indent guides' })
+
+  if conf.key then
+    vim.keymap.set('n', conf.key, '<Cmd>IndentToggle<CR>', {
+      desc = 'Toggle indent guides',
+      noremap = true,
+      silent = true,
+    })
+  end
+end
+
+return M
