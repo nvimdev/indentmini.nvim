@@ -1,35 +1,45 @@
 # indentmini.nvim
 
-An indentation plugin born for the pursuit of **minimal**(~120 lines), **speed**(blazing fastest on files with tens of thousands of lines) and **stability**.
-It renders in the neovim screen redraw circle and will never make your neovim slow.
+An indentation plugin born for the pursuit of minimalism, speed and stability.
+It renders in the NeoVim screen redraw circle and should keep the NeoVim fast.
 
 ![indentmini](https://github.com/nvimdev/indentmini.nvim/assets/41671631/99fb6dd4-8e61-412f-aa4c-c83ee7ce3206)
 
 ## Install
 
-install with any plugin management or default vim package.
+Install with any plugin manager or as a NeoVim package.
 
-## Config
+## Configuration
 
-available config values in setup table.
+| Key              | Description                                   | Default                   |
+|------------------|-----------------------------------------------|---------------------------|
+| char             | Character to draw the indentation guides      | `<BAR>`                   |
+| enabled          | Default state of the plugin                   | `true`                    |
+| exclude          | Disable in these filetypes                    | `{}`                      |
+| exclude_nodetype | TreeSitter classes where guides are not drawn | `{ 'string', 'comment' }` |
+| key              | Hotkey to toggle the guides                   | `''`                      |
+| minlevel         | Minimum level where indentation is drawn      | `0`                       |
+| only_current     | only highlight current indentation level      | `false`                   |
 
-- char     -- string type default is `│`,
-- exclude  -- table  type add exclude filetype in this table ie `{ 'markdown', 'xxx'}`
-- minlevel -- number the min level that show indent line default is 1
-- only_current -- boolean default is false when true will only highlight current range
-- exclude_nodetype -- table with TS classes where guides are not drawn, defaults to `{ 'string', 'comment' }`
-- key -- string, hotkey to toggle the indent guides. Not set by default.
-- enabled -- boolean, controls the default state of the plugin
+### Example
 
 ```lua
 config = function()
-    require("indentmini").setup() -- use default config
-end,
+    require("indentmini").setup({
+        only_current = false,
+        enabled = false,
+        char = '▏',
+        minlevel = 2,
+        key = '<F5>',
+        exclude = { 'markdown', 'help', 'text', 'rst' },
+        exclude_nodetype = { 'string', 'comment' }
+    })
+end
 ```
 
-## Toggle Functionality
+## Toggle functionality
 
-You can toggle indent guides via:
+You can toggle the guides via:
 
 ### Commands
 
@@ -54,17 +64,15 @@ indentmini.enable()
 indentmini.disable()
 ```
 
-## Highlight
+## Colours
 
-if your colorscheme not config the `IndentLine*` relate highlight group you should config it in
-your neovim config.
+The plugin uses `IndentLine*` highlight groups and provides no default values.
 
 ```lua
--- Colors are applied automatically based on user-defined highlight groups.
--- There is no default value.
 vim.cmd.highlight('IndentLine guifg=#123456')
--- Current indent line highlight
 vim.cmd.highlight('IndentLineCurrent guifg=#123456')
 ```
 
-## License MIT
+## Licence
+
+MIT
