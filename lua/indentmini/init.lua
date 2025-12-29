@@ -316,17 +316,26 @@ local M = {}
 
 function M.toggle()
   enabled = not enabled
-  vim.cmd('redraw!')
+  vim.api.nvim__redraw({
+      buf = vim.api.nvim_get_current_buf(),
+      valid = false
+  })
 end
 
 function M.enable()
   enabled = true
-  vim.cmd('redraw!')
+  vim.api.nvim__redraw({
+      buf = vim.api.nvim_get_current_buf(),
+      valid = false
+  })
 end
 
 function M.disable()
   enabled = false
-  vim.cmd('redraw!')
+  vim.api.nvim__redraw({
+      buf = vim.api.nvim_get_current_buf(),
+      valid = false
+  })
 end
 
 --- @param conf table|nil IndentMini config
