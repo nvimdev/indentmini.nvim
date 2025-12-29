@@ -1,9 +1,7 @@
 # indentmini.nvim
 
-An indentation plugin born for the pursuit of minimalism, speed and stability.
+An indentation plugin born for the pursuit of minimalism, speed and stability.<br>
 It renders in the NeoVim screen redraw circle and should keep the NeoVim fast.
-
-![indentmini](https://github.com/nvimdev/indentmini.nvim/assets/41671631/99fb6dd4-8e61-412f-aa4c-c83ee7ce3206)
 
 ## Install
 
@@ -41,13 +39,13 @@ end
 
 You can toggle the guides via:
 
-### Commands
+#### Commands
 
 - `:IndentToggle` - Toggle indent guides on/off
 - `:IndentEnable` - Enable indent guides
 - `:IndentDisable` - Disable indent guides
 
-### Hotkey
+#### Hotkey
 
 ```lua
 require("indentmini").setup({
@@ -55,7 +53,7 @@ require("indentmini").setup({
 })
 ```
 
-### API
+#### API
 
 ```lua
 local indentmini = require("indentmini")
