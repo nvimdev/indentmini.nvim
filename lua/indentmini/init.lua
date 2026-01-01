@@ -349,18 +349,6 @@ function M.setup(conf)
   opt.minlevel = conf.minlevel or 1
   set_provider(ns, { on_win = on_win, on_line = on_line })
 
-  vim.api.nvim_create_user_command('IndentToggle', function()
-    M.toggle()
-  end, { desc = 'Toggle indent guides' })
-
-  vim.api.nvim_create_user_command('IndentEnable', function()
-    M.enable()
-  end, { desc = 'Enable indent guides' })
-
-  vim.api.nvim_create_user_command('IndentDisable', function()
-    M.disable()
-  end, { desc = 'Disable indent guides' })
-
   if conf.key then
     vim.keymap.set('n', conf.key, '<Cmd>IndentToggle<CR>', {
       desc = 'Toggle indent guides',

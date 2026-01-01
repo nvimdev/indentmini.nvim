@@ -21,7 +21,10 @@ Install with any plugin manager or as a NeoVim package.
 
 ### Example
 
+The plugin supports lazy-loading:
+
 ```lua
+cmd = { 'IndentToggle', 'IndentEnable', 'IndentDisable' },
 config = function()
     require("indentmini").setup({
         only_current = false,
