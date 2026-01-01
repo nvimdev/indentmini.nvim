@@ -5,12 +5,15 @@ local ffi, treesitter = require('ffi'), vim.treesitter
 local opt = {
   only_current = false,
   exclude = { 'dashboard', 'lazy', 'help', 'nofile', 'terminal', 'prompt', 'qf' },
+  exclude_nodetype = { 'string', 'comment' },
   config = {
     virt_text_pos = 'overlay',
     hl_mode = 'combine',
     ephemeral = true,
   },
 }
+
+local enabled = true
 
 ffi.cdef([[
   typedef struct {} Error;
@@ -229,6 +232,15 @@ local function on_line(_, _, bufnr, row)
     if context.is_tab and not context.mixup then
       col = level - 1
     end
+    if context.has_ts then
+      local node = treesitter.get_node({ bufnr = bufnr, pos = { row, col }, ignore_injections = true })
+      while node do
+        if vim.tbl_contains(opt.exclude_nodetype, node:type()) then
+          goto continue
+        end
+        node = node:parent()
+      end
+    end
     if
       col >= context.leftcol
       and level >= opt.minlevel
@@ -248,10 +260,14 @@ local function on_line(_, _, bufnr, row)
       buf_set_extmark(bufnr, ns, row, col, opt.config)
       opt.config.virt_text_win_col = nil
     end
+    ::continue::
   end
 end
 
 local function on_win(_, winid, bufnr, toprow, botrow)
+  if not enabled then
+    return false
+  end
   if
     bufnr ~= api.nvim_get_current_buf()
     or vim.iter(opt.exclude):find(function(v)
@@ -279,16 +295,67 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   local pos = api.nvim_win_get_cursor(winid)
   context.currow = pos[1] - 1
   context.curcol = pos[2]
-  find_current_range(find_in_snapshot(context.currow + 1).indent, context.currow)
+  local cur_indent = find_in_snapshot(context.currow + 1).indent
+  local next_indent = (context.currow + 1 < context.count) and find_in_snapshot(context.currow + 2).indent or 0
+  -- We only want to look backwards if we are closing a block
+  local line_text = api.nvim_get_current_line()
+  local is_closer = line_text:find('^%s*[})%]]') or line_text:find('^%s*end')
+  local target_indent = cur_indent
+  if next_indent > cur_indent then
+    target_indent = next_indent
+  elseif is_closer then
+    local prev_indent = context.currow > 0 and find_in_snapshot(context.currow).indent or 0
+    if prev_indent > cur_indent then
+      target_indent = prev_indent
+    end
+  end
+  find_current_range(target_indent, context.currow)
 end
 
-return {
-  setup = function(conf)
-    conf = conf or {}
-    opt.only_current = conf.only_current or false
-    opt.exclude = vim.list_extend(opt.exclude, conf.exclude or {})
-    opt.config.virt_text = { { conf.char or '│' } }
-    opt.minlevel = conf.minlevel or 1
-    set_provider(ns, { on_win = on_win, on_line = on_line })
-  end,
-}
+local M = {}
+
+function M.toggle()
+  enabled = not enabled
+  vim.api.nvim__redraw({
+      buf = vim.api.nvim_get_current_buf(),
+      valid = false
+  })
+end
+
+function M.enable()
+  enabled = true
+  vim.api.nvim__redraw({
+      buf = vim.api.nvim_get_current_buf(),
+      valid = false
+  })
+end
+
+function M.disable()
+  enabled = false
+  vim.api.nvim__redraw({
+      buf = vim.api.nvim_get_current_buf(),
+      valid = false
+  })
+end
+
+--- @param conf table|nil IndentMini config
+function M.setup(conf)
+  conf = conf or {}
+  enabled = conf.enabled ~= false
+  opt.only_current = conf.only_current or false
+  opt.exclude = vim.list_extend(opt.exclude, conf.exclude or {})
+  opt.exclude_nodetype = vim.list_extend(opt.exclude_nodetype, conf.exclude_nodetype or {})
+  opt.config.virt_text = { { conf.char or '│' } }
+  opt.minlevel = conf.minlevel or 1
+  set_provider(ns, { on_win = on_win, on_line = on_line })
+
+  if conf.key then
+    vim.keymap.set('n', conf.key, '<Cmd>IndentToggle<CR>', {
+      desc = 'Toggle indent guides',
+      noremap = true,
+      silent = true,
+    })
+  end
+end
+
+return M
