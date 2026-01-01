@@ -24,18 +24,29 @@ Install with any plugin manager or as a NeoVim package.
 The plugin supports lazy-loading:
 
 ```lua
-cmd = { 'IndentToggle', 'IndentEnable', 'IndentDisable' },
-config = function()
-    require("indentmini").setup({
-        only_current = false,
-        enabled = false,
-        char = '▏',
-        minlevel = 2,
-        key = '<F5>',
-        exclude = { 'markdown', 'help', 'text', 'rst' },
-        exclude_nodetype = { 'string', 'comment' }
-    })
-end
+-- Either declare `vim.g.indentmini_key` before you load the plugin:
+vim.g.indentmini_key = '<F5>'
+
+-- or use your plugin manager, for example Lazy.nvim:
+{
+    url = 'https://github.com/nvimdev/indentmini.nvim',
+    cmd = { 'IndentToggle', 'IndentEnable', 'IndentDisable' },
+    keys = {
+        {'<F5>', '<Cmd>IndentToggle<CR>', desc = 'Toggle indent guides'},
+    },
+    lazy = true,
+    config = function()
+        require("indentmini").setup({
+            only_current = false,
+            enabled = false,
+            char = '▏',
+            key = '<F5>', -- optional, can be set here if you don't lazy-load
+            minlevel = 2,
+            exclude = { 'markdown', 'help', 'text', 'rst' },
+            exclude_nodetype = { 'string', 'comment' }
+        })
+    end
+}
 ```
 
 ## Toggle functionality
@@ -50,6 +61,12 @@ You can toggle the guides via:
 
 #### Hotkey
 
+For lazy-loading setups, set the global variable before the plugin loads:
+```lua
+vim.g.indentmini_key = '<F5>'
+```
+
+For non-lazy setups, use the `key` option in `setup()`:
 ```lua
 require("indentmini").setup({
     key = '<F5>',

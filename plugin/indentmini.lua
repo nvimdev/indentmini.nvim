@@ -15,3 +15,11 @@ vim.api.nvim_create_user_command(
     function() require('indentmini').disable() end,
     { desc = 'Disable indent guides' }
 )
+
+if vim.g.indentmini_key then
+    vim.keymap.set('n', vim.g.indentmini_key, '<Cmd>IndentToggle<CR>', {
+        desc = 'Toggle indent guides',
+        noremap = true,
+        silent = true,
+    })
+end
