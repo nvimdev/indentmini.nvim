@@ -14,7 +14,7 @@ Install with any plugin manager or as a NeoVim package.
 | char             | Character to draw the indentation guides      | `<BAR>`                   |
 | enabled          | Default state of the plugin                   | `true`                    |
 | exclude          | Disable in these filetypes                    | `{}`                      |
-| exclude_nodetype | TreeSitter classes where guides are not drawn | `{ 'string', 'comment' }` |
+| exclude_nodetype | TreeSitter classes where guides are not drawn | `{}` |
 | key              | Hotkey to toggle the guides                   | `''`                      |
 | minlevel         | Minimum level where indentation is drawn      | `0`                       |
 | only_current     | only highlight current indentation level      | `false`                   |

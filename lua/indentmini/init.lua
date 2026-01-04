@@ -5,7 +5,7 @@ local ffi, treesitter = require('ffi'), vim.treesitter
 local opt = {
   only_current = false,
   exclude = { 'dashboard', 'lazy', 'help', 'nofile', 'terminal', 'prompt', 'qf' },
-  exclude_nodetype = { 'string', 'comment' },
+  exclude_nodetype = {},
   config = {
     virt_text_pos = 'overlay',
     hl_mode = 'combine',
@@ -233,7 +233,8 @@ local function on_line(_, _, bufnr, row)
       col = level - 1
     end
     if context.has_ts then
-      local node = treesitter.get_node({ bufnr = bufnr, pos = { row, col }, ignore_injections = true })
+      local node =
+        treesitter.get_node({ bufnr = bufnr, pos = { row, col }, ignore_injections = true })
       while node do
         if vim.tbl_contains(opt.exclude_nodetype, node:type()) then
           goto continue
@@ -296,7 +297,9 @@ local function on_win(_, winid, bufnr, toprow, botrow)
   context.currow = pos[1] - 1
   context.curcol = pos[2]
   local cur_indent = find_in_snapshot(context.currow + 1).indent
-  local next_indent = (context.currow + 1 < context.count) and find_in_snapshot(context.currow + 2).indent or 0
+  local next_indent = (context.currow + 1 < context.count)
+      and find_in_snapshot(context.currow + 2).indent
+    or 0
   -- We only want to look backwards if we are closing a block
   local line_text = api.nvim_get_current_line()
   local is_closer = line_text:find('^%s*[})%]]') or line_text:find('^%s*end')
@@ -317,24 +320,24 @@ local M = {}
 function M.toggle()
   enabled = not enabled
   vim.api.nvim__redraw({
-      buf = vim.api.nvim_get_current_buf(),
-      valid = false
+    buf = vim.api.nvim_get_current_buf(),
+    valid = false,
   })
 end
 
 function M.enable()
   enabled = true
   vim.api.nvim__redraw({
-      buf = vim.api.nvim_get_current_buf(),
-      valid = false
+    buf = vim.api.nvim_get_current_buf(),
+    valid = false,
   })
 end
 
 function M.disable()
   enabled = false
   vim.api.nvim__redraw({
-      buf = vim.api.nvim_get_current_buf(),
-      valid = false
+    buf = vim.api.nvim_get_current_buf(),
+    valid = false,
   })
 end
 
